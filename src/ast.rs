@@ -4,6 +4,7 @@ use crate::token;
 use crate::types;
 
 /// Declarations involve variable and function declarations.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Decl {
     // Variable declarations associate an identifier with a declaration type
     // and a value.
@@ -14,6 +15,7 @@ pub enum Decl {
 }
 
 /// Expressions in axion can be literals, unary, binary or assignments.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
     // Literal expressions simply return the literal value.
     Literal(LiteralValue),
