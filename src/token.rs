@@ -19,8 +19,6 @@ pub enum Token {
     RBrace,
     LBracket,
     RBracket,
-    Caret,
-    Percent,
     Bang,
     Equal,
     Or,
@@ -32,14 +30,13 @@ pub enum Token {
     EqualEqual,
     BangEqual,
     Minus,
-    Decrement,
     Plus,
-    Increment,
     Star,
     Slash,
     Comma,
     Semicolon,
     Colon,
+    Arrow,
     // Literal types.
     IntegerLiteral(i64),
     CharacterLiteral(char),
@@ -47,7 +44,9 @@ pub enum Token {
     // Identifiers.
     Identifier(String),
     // Keywords.
-    Integer,
+    Let,
+    Const,
+    Int,
     String,
     Boolean,
     Char,
@@ -56,7 +55,6 @@ pub enum Token {
     Else,
     For,
     While,
-    Void,
     Function,
     Return,
     True,
@@ -75,8 +73,6 @@ impl std::fmt::Display for Token {
             Self::RBrace => write!(f, "}}"),
             Self::LBracket => write!(f, "["),
             Self::RBracket => write!(f, "]"),
-            Self::Caret => write!(f, "^"),
-            Self::Percent => write!(f, "%"),
             Self::Bang => write!(f, "!"),
             Self::Equal => write!(f, "="),
             Self::Or => write!(f, "OR"),
@@ -88,19 +84,20 @@ impl std::fmt::Display for Token {
             Self::EqualEqual => write!(f, "=="),
             Self::BangEqual => write!(f, "!="),
             Self::Minus => write!(f, "-"),
-            Self::Decrement => write!(f, "--"),
             Self::Plus => write!(f, "+"),
-            Self::Increment => write!(f, "++"),
             Self::Star => write!(f, "*"),
             Self::Slash => write!(f, "/"),
             Self::Comma => write!(f, ","),
             Self::Semicolon => write!(f, ";"),
             Self::Colon => write!(f, ":"),
+            Self::Arrow => write!(f, "->"),
             Self::IntegerLiteral(v) => write!(f, "INTEGER({v})"),
             Self::CharacterLiteral(v) => write!(f, "CHARACTER({v})"),
             Self::StringLiteral(v) => write!(f, "STRING({v})"),
             Self::Identifier(s) => write!(f, "IDENT({s})"),
-            Self::Integer => write!(f, "INTEGER"),
+            Self::Const => write!(f, "CONST"),
+            Self::Let => write!(f, "LET"),
+            Self::Int => write!(f, "INTEGER"),
             Self::String => write!(f, "STRING"),
             Self::Boolean => write!(f, "BOOLEAN"),
             Self::Char => write!(f, "CHAR"),
@@ -109,14 +106,12 @@ impl std::fmt::Display for Token {
             Self::Else => write!(f, "ELSE"),
             Self::For => write!(f, "FOR"),
             Self::While => write!(f, "WHILE"),
-            Self::Void => write!(f, "VOID"),
             Self::Function => write!(f, "FUNCTION"),
             Self::Return => write!(f, "RETURN"),
             Self::True => write!(f, "TRUE"),
             Self::False => write!(f, "FALSE"),
             Self::Print => write!(f, "PRINT"),
             Self::Eof => write!(f, "EOF"),
-            _ => write!(f, "TOKEN"),
         }
     }
 }
@@ -125,6 +120,8 @@ impl std::fmt::Display for Token {
 /// return the respective token otherwise return `None`.
 pub fn is_keyword(ident: &str) -> Option<Token> {
     match ident {
+        "const" => Some(Token::Const),
+        "let" => Some(Token::Let),
         "array" => Some(Token::Array),
         "boolean" => Some(Token::Boolean),
         "char" => Some(Token::Char),
@@ -133,12 +130,11 @@ pub fn is_keyword(ident: &str) -> Option<Token> {
         "for" => Some(Token::For),
         "function" => Some(Token::Function),
         "if" => Some(Token::If),
-        "integer" => Some(Token::Integer),
+        "int" => Some(Token::Int),
         "print" => Some(Token::Print),
         "return" => Some(Token::Return),
         "string" => Some(Token::String),
         "true" => Some(Token::True),
-        "void" => Some(Token::Void),
         "while" => Some(Token::While),
         _ => None,
     }
@@ -164,13 +160,14 @@ mod tests {
         assert_eq!(is_keyword("for"), Some(Token::For));
         assert_eq!(is_keyword("function"), Some(Token::Function));
         assert_eq!(is_keyword("if"), Some(Token::If));
-        assert_eq!(is_keyword("integer"), Some(Token::Integer));
+        assert_eq!(is_keyword("int"), Some(Token::Int));
         assert_eq!(is_keyword("print"), Some(Token::Print));
         assert_eq!(is_keyword("return"), Some(Token::Return));
         assert_eq!(is_keyword("string"), Some(Token::String));
         assert_eq!(is_keyword("true"), Some(Token::True));
-        assert_eq!(is_keyword("void"), Some(Token::Void));
         assert_eq!(is_keyword("while"), Some(Token::While));
+        assert_eq!(is_keyword("let"), Some(Token::Let));
+        assert_eq!(is_keyword("const"), Some(Token::Const));
 
         assert_eq!(is_keyword("var"), None);
         assert_eq!(is_keyword("square"), None);

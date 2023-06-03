@@ -44,8 +44,7 @@ impl Lexer {
                 '=' if self.eat('=') => self.tokens.push(Token::EqualEqual),
                 '>' if self.eat('=') => self.tokens.push(Token::GreaterEqual),
                 '<' if self.eat('=') => self.tokens.push(Token::LesserEqual),
-                '+' if self.eat('+') => self.tokens.push(Token::Increment),
-                '-' if self.eat('-') => self.tokens.push(Token::Decrement),
+                '-' if self.eat('>') => self.tokens.push(Token::Arrow),
                 '/' if self.eat('/') || self.eat('*') => self.eat_comment(),
                 '(' => self.tokens.push(Token::LParen),
                 ')' => self.tokens.push(Token::RParen),
@@ -60,8 +59,6 @@ impl Lexer {
                 '>' => self.tokens.push(Token::Greater),
                 '=' => self.tokens.push(Token::Equal),
                 '!' => self.tokens.push(Token::Bang),
-                '^' => self.tokens.push(Token::Caret),
-                '%' => self.tokens.push(Token::Percent),
                 '*' => self.tokens.push(Token::Star),
                 '/' => self.tokens.push(Token::Slash),
                 '+' => self.tokens.push(Token::Plus),
@@ -240,7 +237,7 @@ mod tests {
     }
     #[test]
     fn lex_single_char_tokens() {
-        let source = "{|| && }  [==](=)!++--+-*/^:;, /* //";
+        let source = "{|| && }  [==](=)!+-*/:;, /* //";
         let mut lexer = Lexer::new(source);
         let tokens = lexer.lex().unwrap();
         let expected = vec![
@@ -255,13 +252,10 @@ mod tests {
             Token::Equal,
             Token::RParen,
             Token::Bang,
-            Token::Increment,
-            Token::Decrement,
             Token::Plus,
             Token::Minus,
             Token::Star,
             Token::Slash,
-            Token::Caret,
             Token::Colon,
             Token::Semicolon,
             Token::Comma,
@@ -319,13 +313,13 @@ mod tests {
     }
     #[test]
     fn lex_can_handle_keywords_and_identifiers() {
-        let source = "answer : integer = 42;";
+        let source = "answer : int = 42;";
         let mut lexer = Lexer::new(source);
         let tokens = lexer.lex().unwrap();
         let expected = vec![
             Token::Identifier("answer".to_string()),
             Token::Colon,
-            Token::Integer,
+            Token::Int,
             Token::Equal,
             Token::IntegerLiteral(42),
             Token::Semicolon,
@@ -343,6 +337,45 @@ mod tests {
             Token::Return,
             Token::IntegerLiteral(42),
             Token::Semicolon,
+            Token::Eof,
+        ];
+        assert_eq!(&tokens, &expected);
+    }
+
+    #[test]
+    fn lex_function() {
+        let source = r#"
+const answer : int = 42;
+
+function sumArray(arr: array[int], size: int) -> int {}"#;
+        let mut lexer = Lexer::new(source);
+        let tokens = lexer.lex().unwrap();
+        let expected = vec![
+            Token::Const,
+            Token::Identifier("answer".to_string()),
+            Token::Colon,
+            Token::Int,
+            Token::Equal,
+            Token::IntegerLiteral(42),
+            Token::Semicolon,
+            Token::Function,
+            Token::Identifier("sumArray".to_string()),
+            Token::LParen,
+            Token::Identifier("arr".to_string()),
+            Token::Colon,
+            Token::Array,
+            Token::LBracket,
+            Token::Int,
+            Token::RBracket,
+            Token::Comma,
+            Token::Identifier("size".to_string()),
+            Token::Colon,
+            Token::Int,
+            Token::RParen,
+            Token::Arrow,
+            Token::Int,
+            Token::LBrace,
+            Token::RBrace,
             Token::Eof,
         ];
         assert_eq!(&tokens, &expected);

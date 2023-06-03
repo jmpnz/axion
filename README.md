@@ -4,7 +4,7 @@
 
 const answer : int = 42;
 
-fn sumArray(arr: array[int], size: int) -> integer {
+function sumArray(arr: array[int], size: int) -> integer {
     let sum: int = 0;
     let i:int = 0;
     for (i = 0;i < size;i++) {
