@@ -6,5 +6,5 @@ fn main() {
     let mut lexer = Lexer::new(source);
     let tokens = lexer.lex().unwrap();
     println!("{:?}", tokens);
-    println!("{}", add(55,55));
+    println!("{}", add(55, 55));
 }
