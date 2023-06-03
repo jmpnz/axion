@@ -404,4 +404,58 @@ function sumArray(arr: array[int], size: int) -> int {}"#,
             Token::Eof,
         ]
     );
+
+    test_lexer!(
+        can_handle_while_conditionals,
+        r#"
+        let i : int = 10;
+        let sum : int = 0;
+        while (i >= 0) {
+            sum = sum + 10;
+            if (i == 5) {
+                break;
+            }
+        }"#,
+        &vec![
+            Token::Let,
+            Token::Identifier("i".to_string()),
+            Token::Colon,
+            Token::Int,
+            Token::Equal,
+            Token::IntegerLiteral(10),
+            Token::Semicolon,
+            Token::Let,
+            Token::Identifier("sum".to_string()),
+            Token::Colon,
+            Token::Int,
+            Token::Equal,
+            Token::IntegerLiteral(0),
+            Token::Semicolon,
+            Token::While,
+            Token::LParen,
+            Token::Identifier("i".to_string()),
+            Token::GreaterEqual,
+            Token::IntegerLiteral(0),
+            Token::RParen,
+            Token::LBrace,
+            Token::Identifier("sum".to_string()),
+            Token::Equal,
+            Token::Identifier("sum".to_string()),
+            Token::Plus,
+            Token::IntegerLiteral(10),
+            Token::Semicolon,
+            Token::If,
+            Token::LParen,
+            Token::Identifier("i".to_string()),
+            Token::EqualEqual,
+            Token::IntegerLiteral(5),
+            Token::RParen,
+            Token::LBrace,
+            Token::Break,
+            Token::Semicolon,
+            Token::RBrace,
+            Token::RBrace,
+            Token::Eof,
+        ]
+    );
 }

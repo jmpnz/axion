@@ -45,6 +45,7 @@ pub enum Token {
     Identifier(String),
     // Keywords.
     Let,
+    Break,
     Const,
     Int,
     String,
@@ -95,6 +96,7 @@ impl std::fmt::Display for Token {
             Self::CharacterLiteral(v) => write!(f, "CHARACTER({v})"),
             Self::StringLiteral(v) => write!(f, "STRING({v})"),
             Self::Identifier(s) => write!(f, "IDENT({s})"),
+            Self::Break => write!(f, "BREAK"),
             Self::Const => write!(f, "CONST"),
             Self::Let => write!(f, "LET"),
             Self::Int => write!(f, "INTEGER"),
@@ -120,6 +122,7 @@ impl std::fmt::Display for Token {
 /// return the respective token otherwise return `None`.
 pub fn is_keyword(ident: &str) -> Option<Token> {
     match ident {
+        "break" => Some(Token::Break),
         "const" => Some(Token::Const),
         "let" => Some(Token::Let),
         "array" => Some(Token::Array),
