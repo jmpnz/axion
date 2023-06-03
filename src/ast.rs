@@ -1,7 +1,7 @@
 //! AST module provides definitions and implementations of AST nodes.
 //! We define AST nodes as enums with data.
-use crate::types
 use crate::token;
+use crate::types;
 
 /// Declarations involve variable and function declarations.
 pub enum Decl {

@@ -21,10 +21,16 @@ impl Parser {
         }
     }
 
+    /// Parse an expression.
+    fn expression(&mut self) -> ast::Expr {}
+
+    /// Parse a comparison expression.
+    fn comparison(&mut self) -> ast::Expr {}
+
     /// Advance the parser to the next token.
     fn advance(&mut self) -> Token {
         if !self.eof() {
-            self.pos++
+            self.pos += 1;
         }
         self.previous()
     }
@@ -32,11 +38,10 @@ impl Parser {
     /// Check if the current token is the `expected` token.
     fn check(&self, expected: &Token) -> bool {
         if self.eof() {
-            false
+            return false;
         }
-        self.peek() == expected
+        &self.peek() == expected
     }
-
 
     /// Check if we reached end of file.
     fn eof(&self) -> bool {
@@ -52,7 +57,6 @@ impl Parser {
 
     /// Return a copy of the last consumed token.
     fn previous(&self) -> Token {
-        self.tokens[self.pos -1].clone()
+        self.tokens[self.pos - 1].clone()
     }
-
 }
