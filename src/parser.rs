@@ -30,7 +30,7 @@ impl Parser {
     fn equality(&mut self) -> ast::Expr {
         let mut expr = self.comparison();
 
-        if self.next(&Token::BangEqual) || self.next(&Token::EqualEqual) {
+        while self.next(&Token::BangEqual) || self.next(&Token::EqualEqual) {
             let operator = self.previous();
             let right = self.comparison();
             expr = ast::Expr::Binary(operator, Box::new(expr), Box::new(right));
@@ -42,7 +42,7 @@ impl Parser {
     fn comparison(&mut self) -> ast::Expr {
         let mut expr = self.term();
 
-        if self.next(&Token::Greater)
+        while self.next(&Token::Greater)
             || self.next(&Token::GreaterEqual)
             || self.next(&Token::Lesser)
             || self.next(&Token::LesserEqual)
@@ -58,7 +58,7 @@ impl Parser {
     fn term(&mut self) -> ast::Expr {
         let mut expr = self.factor();
 
-        if self.next(&Token::Minus) || self.next(&Token::Plus) {
+        while self.next(&Token::Minus) || self.next(&Token::Plus) {
             let operator = self.previous();
             let right = self.factor();
             expr = ast::Expr::Binary(operator, Box::new(expr), Box::new(right));
@@ -70,7 +70,7 @@ impl Parser {
     fn factor(&mut self) -> ast::Expr {
         let mut expr = self.unary();
 
-        if self.next(&Token::Slash) || self.next(&Token::Star) {
+        while self.next(&Token::Slash) || self.next(&Token::Star) {
             let operator = self.previous();
             let right = self.unary();
             expr = ast::Expr::Binary(operator, Box::new(expr), Box::new(right));
@@ -106,13 +106,13 @@ impl Parser {
                 ast::Expr::Literal(ast::LiteralValue::Char(v))
             }
             Token::LParen => {
+                self.advance();
                 let grouping = self.expression();
-                self.eat(&Token::RParen);
                 ast::Expr::Grouping(Box::new(grouping))
             }
             _ => panic!("Unexpected token"),
         };
-        self.advance();
+        let tok = self.advance();
         expr
     }
 
@@ -267,6 +267,48 @@ mod tests {
             Token::Slash,
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
+        )
+    );
+    test_parser!(
+        grouping_expr,
+        "(5 / 5) * (3/4 + 1)",
+        ast::Expr::Binary(
+            Token::Star,
+            Box::new(ast::Expr::Grouping(Box::new(ast::Expr::Binary(
+                Token::Slash,
+                Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
+                Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
+            )))),
+            Box::new(ast::Expr::Grouping(Box::new(ast::Expr::Binary(
+                Token::Plus,
+                Box::new(ast::Expr::Binary(
+                    Token::Slash,
+                    Box::new(ast::Expr::Literal(ast::LiteralValue::Int(3))),
+                    Box::new(ast::Expr::Literal(ast::LiteralValue::Int(4))),
+                )),
+                Box::new(ast::Expr::Literal(ast::LiteralValue::Int(1)))
+            ),)))
+        )
+    );
+    test_parser!(
+        precedence_expr,
+        "5 / 5 * 3/4 + 1",
+        ast::Expr::Binary(
+            Token::Plus,
+            Box::new(ast::Expr::Binary(
+                Token::Slash,
+                Box::new(ast::Expr::Binary(
+                    Token::Star,
+                    Box::new(ast::Expr::Binary(
+                        Token::Slash,
+                        Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
+                        Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
+                    )),
+                    Box::new(ast::Expr::Literal(ast::LiteralValue::Int(3)))
+                ),),
+                Box::new(ast::Expr::Literal(ast::LiteralValue::Int(4))),
+            )),
+            Box::new(ast::Expr::Literal(ast::LiteralValue::Int(1)))
         )
     );
 }
