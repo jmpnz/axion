@@ -228,6 +228,7 @@ mod tests {
             }
         };
     }
+
     #[test]
     fn lexer_next_char() {
         let source = "{}[]!=";
@@ -454,6 +455,43 @@ function sumArray(arr: array[int], size: int) -> int {}"#,
             Token::Break,
             Token::Semicolon,
             Token::RBrace,
+            Token::RBrace,
+            Token::Eof,
+        ]
+    );
+
+    test_lexer!(
+        can_handle_for_loops,
+        r#"
+        let sum : int = 0;
+        for (i = 0;i < 10; i = i+1) {
+        }
+        "#,
+        &vec![
+            Token::Let,
+            Token::Identifier("sum".to_string()),
+            Token::Colon,
+            Token::Int,
+            Token::Equal,
+            Token::IntegerLiteral(0),
+            Token::Semicolon,
+            Token::For,
+            Token::LParen,
+            Token::Identifier("i".to_string()),
+            Token::Equal,
+            Token::IntegerLiteral(0),
+            Token::Semicolon,
+            Token::Identifier("i".to_string()),
+            Token::Lesser,
+            Token::IntegerLiteral(10),
+            Token::Semicolon,
+            Token::Identifier("i".to_string()),
+            Token::Equal,
+            Token::Identifier("i".to_string()),
+            Token::Plus,
+            Token::IntegerLiteral(1),
+            Token::RParen,
+            Token::LBrace,
             Token::RBrace,
             Token::Eof,
         ]
