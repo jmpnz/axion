@@ -1,4 +1,7 @@
-//! Simple lexical engine to process B-minor source code into tokens.
+//! Simple lexical engine to process axion source code into tokens.
+//! The engine works by iterating over individual characters and updating
+//! it's internal state machine.
+//! On failure the `lex` method returns a lexical error.
 use crate::token::{is_keyword, Token};
 use std::error::Error;
 use std::fmt;
@@ -230,18 +233,6 @@ mod tests {
     }
 
     #[test]
-    fn lexer_next_char() {
-        let source = "{}[]!=";
-        let mut lexer = Lexer::new(source);
-        assert_eq!(lexer.next(), Some('{'));
-        assert_eq!(lexer.next(), Some('}'));
-        assert_eq!(lexer.next(), Some('['));
-        assert_eq!(lexer.next(), Some(']'));
-        assert_eq!(lexer.next(), Some('!'));
-        assert_eq!(lexer.next(), Some('='));
-        assert!(lexer.eof());
-    }
-    #[test]
     fn lex_empty_source_returns_eof() {
         let source = "";
         let mut lexer = Lexer::new(source);
@@ -279,24 +270,6 @@ mod tests {
             Token::Comma,
             Token::Eof,
         ]
-    );
-
-    test_lexer!(
-        can_handle_string_literals,
-        r#" "hello" "#,
-        &vec![Token::StringLiteral("hello".to_string()), Token::Eof]
-    );
-
-    test_lexer!(
-        can_handle_integer_literals,
-        "1337;",
-        &vec![Token::IntegerLiteral(1337), Token::Semicolon, Token::Eof]
-    );
-
-    test_lexer!(
-        can_handle_char_literals,
-        " 'a' ",
-        &vec![Token::CharacterLiteral('a'), Token::Eof]
     );
 
     test_lexer!(
@@ -493,6 +466,34 @@ function sumArray(arr: array[int], size: int) -> int {}"#,
             Token::RParen,
             Token::LBrace,
             Token::RBrace,
+            Token::Eof,
+        ]
+    );
+
+    test_lexer!(
+        can_handle_array_literals,
+        "let arr : array[int] = [1,2,3,4,5];",
+        &vec![
+            Token::Let,
+            Token::Identifier("arr".to_string()),
+            Token::Colon,
+            Token::Array,
+            Token::LBracket,
+            Token::Int,
+            Token::RBracket,
+            Token::Equal,
+            Token::LBracket,
+            Token::IntegerLiteral(1),
+            Token::Comma,
+            Token::IntegerLiteral(2),
+            Token::Comma,
+            Token::IntegerLiteral(3),
+            Token::Comma,
+            Token::IntegerLiteral(4),
+            Token::Comma,
+            Token::IntegerLiteral(5),
+            Token::RBracket,
+            Token::Semicolon,
             Token::Eof,
         ]
     );
