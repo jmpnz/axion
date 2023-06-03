@@ -95,9 +95,7 @@ impl Parser {
             Token::False => {
                 ast::Expr::Literal(ast::LiteralValue::Boolean(false))
             }
-            Token::True => {
-                ast::Expr::Literal(ast::LiteralValue::Boolean(false))
-            }
+            Token::True => ast::Expr::Literal(ast::LiteralValue::Boolean(true)),
             Token::IntegerLiteral(v) => {
                 ast::Expr::Literal(ast::LiteralValue::Int(v))
             }
@@ -199,138 +197,76 @@ mod tests {
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
         )
     );
-    /*
+
     test_parser!(
         inequality_expr,
         "5 != 4",
-        &vec![
-            ast::Node::Expression(ast::Expr::Literal(
-                ast::LiteralValue::Integer(5)
-            )),
-            ast::Node::Expression(ast::Expr::Literal(
-                ast::LiteralValue::Integer(4)
-            )),
-            ast::Node::Expression(ast::Expr::Binary(
-                Token::BangEqual,
-                ast::NodeRef(0),
-                ast::NodeRef(1)
-            )),
-        ]
+        ast::Expr::Binary(
+            Token::BangEqual,
+            Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
+            Box::new(ast::Expr::Literal(ast::LiteralValue::Int(4))),
+        )
     );
     test_parser!(
         comparison_gte_expr,
         "5 >= 4",
-        &vec![
-            ast::Node::Expression(ast::Expr::Literal(
-                ast::LiteralValue::Integer(5)
-            )),
-            ast::Node::Expression(ast::Expr::Literal(
-                ast::LiteralValue::Integer(4)
-            )),
-            ast::Node::Expression(ast::Expr::Binary(
-                Token::GreaterEqual,
-                ast::NodeRef(0),
-                ast::NodeRef(1)
-            )),
-        ]
+        ast::Expr::Binary(
+            Token::GreaterEqual,
+            Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
+            Box::new(ast::Expr::Literal(ast::LiteralValue::Int(4))),
+        )
     );
     test_parser!(
         comparison_lte_expr,
         "5 <= 4",
-        &vec![
-            ast::Node::Expression(ast::Expr::Literal(
-                ast::LiteralValue::Integer(5)
-            )),
-            ast::Node::Expression(ast::Expr::Literal(
-                ast::LiteralValue::Integer(4)
-            )),
-            ast::Node::Expression(ast::Expr::Binary(
-                Token::LesserEqual,
-                ast::NodeRef(0),
-                ast::NodeRef(1)
-            )),
-        ]
+        ast::Expr::Binary(
+            Token::LesserEqual,
+            Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
+            Box::new(ast::Expr::Literal(ast::LiteralValue::Int(4))),
+        )
     );
     test_parser!(
         unary_expr,
         "!true",
-        &vec![
-            ast::Node::Expression(ast::Expr::Literal(
-                ast::LiteralValue::Boolean(true)
-            )),
-            ast::Node::Expression(ast::Expr::Unary(
-                Token::Bang,
-                ast::NodeRef(0)
-            )),
-        ]
+        ast::Expr::Unary(
+            Token::Bang,
+            Box::new(ast::Expr::Literal(ast::LiteralValue::Boolean(true))),
+        )
     );
     test_parser!(
         add_expr,
         "5 + 5",
-        &vec![
-            ast::Node::Expression(ast::Expr::Literal(
-                ast::LiteralValue::Integer(5)
-            )),
-            ast::Node::Expression(ast::Expr::Literal(
-                ast::LiteralValue::Integer(5)
-            )),
-            ast::Node::Expression(ast::Expr::Binary(
-                Token::Plus,
-                ast::NodeRef(0),
-                ast::NodeRef(1)
-            )),
-        ]
+        ast::Expr::Binary(
+            Token::Plus,
+            Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
+            Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
+        )
     );
     test_parser!(
         sub_expr,
         "5 - 5",
-        &vec![
-            ast::Node::Expression(ast::Expr::Literal(
-                ast::LiteralValue::Integer(5)
-            )),
-            ast::Node::Expression(ast::Expr::Literal(
-                ast::LiteralValue::Integer(5)
-            )),
-            ast::Node::Expression(ast::Expr::Binary(
-                Token::Minus,
-                ast::NodeRef(0),
-                ast::NodeRef(1)
-            )),
-        ]
+        ast::Expr::Binary(
+            Token::Minus,
+            Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
+            Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
+        )
     );
     test_parser!(
         mul_expr,
         "5 * 5",
-        &vec![
-            ast::Node::Expression(ast::Expr::Literal(
-                ast::LiteralValue::Integer(5)
-            )),
-            ast::Node::Expression(ast::Expr::Literal(
-                ast::LiteralValue::Integer(5)
-            )),
-            ast::Node::Expression(ast::Expr::Binary(
-                Token::Star,
-                ast::NodeRef(0),
-                ast::NodeRef(1)
-            )),
-        ]
+        ast::Expr::Binary(
+            Token::Star,
+            Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
+            Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
+        )
     );
     test_parser!(
         div_expr,
         "5 / 5",
-        &vec![
-            ast::Node::Expression(ast::Expr::Literal(
-                ast::LiteralValue::Integer(5)
-            )),
-            ast::Node::Expression(ast::Expr::Literal(
-                ast::LiteralValue::Integer(5)
-            )),
-            ast::Node::Expression(ast::Expr::Binary(
-                Token::Slash,
-                ast::NodeRef(0),
-                ast::NodeRef(1)
-            )),
-        ]
+        ast::Expr::Binary(
+            Token::Slash,
+            Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
+            Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
+        )
     );
-    */
 }
