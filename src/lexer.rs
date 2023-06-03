@@ -216,6 +216,18 @@ impl Error for LexError {
 mod tests {
     use super::*;
 
+    // Macro to generate test cases.
+    macro_rules! test_lexer {
+        ($name:ident, $source:expr, $expected:expr) => {
+            #[test]
+            fn $name() {
+                let source = $source;
+                let mut lexer = Lexer::new(source);
+                let tokens = lexer.lex().unwrap();
+                assert_eq!(&tokens, $expected);
+            }
+        };
+    }
     #[test]
     fn lexer_next_char() {
         let source = "{}[]!=";
@@ -236,11 +248,16 @@ mod tests {
         assert!(lexer.eof());
     }
     #[test]
-    fn lex_single_char_tokens() {
-        let source = "{|| && }  [==](=)!+-*/:;, /* //";
+    fn lex_can_handle_unkown_tokens() {
+        let source = "$@hello";
         let mut lexer = Lexer::new(source);
-        let tokens = lexer.lex().unwrap();
-        let expected = vec![
+        assert!(lexer.lex().is_err());
+    }
+
+    test_lexer!(
+        can_lex_single_char_tokens,
+        "{|| && }  [==](=)!+-*/:;, /* //",
+        &vec![
             Token::LBrace,
             Token::Or,
             Token::And,
@@ -260,47 +277,31 @@ mod tests {
             Token::Semicolon,
             Token::Comma,
             Token::Eof,
-        ];
-        assert_eq!(&tokens, &expected);
-    }
-    #[test]
-    fn lex_can_handle_unkown_tokens() {
-        let source = "$@hello";
-        let mut lexer = Lexer::new(source);
-        assert!(lexer.lex().is_err());
-    }
-    #[test]
-    fn lex_can_handle_string_literals() {
-        let source = r#" "hello" "#;
-        let mut lexer = Lexer::new(source);
-        let tokens = lexer.lex().unwrap();
-        let expected =
-            vec![Token::StringLiteral("hello".to_string()), Token::Eof];
-        assert_eq!(&tokens, &expected);
-    }
-    #[test]
-    fn lex_can_handle_integer_literals() {
-        let source = "1337;";
-        let mut lexer = Lexer::new(source);
-        let tokens = lexer.lex().unwrap();
-        let expected =
-            vec![Token::IntegerLiteral(1337), Token::Semicolon, Token::Eof];
-        assert_eq!(&tokens, &expected);
-    }
-    #[test]
-    fn lex_can_handle_char_literals() {
-        let source = " 'a' ";
-        let mut lexer = Lexer::new(source);
-        let tokens = lexer.lex().unwrap();
-        let expected = vec![Token::CharacterLiteral('a'), Token::Eof];
-        assert_eq!(&tokens, &expected);
-    }
-    #[test]
-    fn lex_can_handle_mixture_of_literals() {
-        let source = r#" 42; "Apollo"; -98732"#;
-        let mut lexer = Lexer::new(source);
-        let tokens = lexer.lex().unwrap();
-        let expected = vec![
+        ]
+    );
+
+    test_lexer!(
+        can_handle_string_literals,
+        r#" "hello" "#,
+        &vec![Token::StringLiteral("hello".to_string()), Token::Eof]
+    );
+
+    test_lexer!(
+        can_handle_integer_literals,
+        "1337;",
+        &vec![Token::IntegerLiteral(1337), Token::Semicolon, Token::Eof]
+    );
+
+    test_lexer!(
+        can_handle_char_literals,
+        " 'a' ",
+        &vec![Token::CharacterLiteral('a'), Token::Eof]
+    );
+
+    test_lexer!(
+        can_handle_mixture_of_literals,
+        r#" 42; "Apollo"; -98732"#,
+        &vec![
             Token::IntegerLiteral(42),
             Token::Semicolon,
             Token::StringLiteral("Apollo".to_string()),
@@ -308,15 +309,14 @@ mod tests {
             Token::Minus,
             Token::IntegerLiteral(98732),
             Token::Eof,
-        ];
-        assert_eq!(&tokens, &expected);
-    }
-    #[test]
-    fn lex_can_handle_keywords_and_identifiers() {
-        let source = "answer : int = 42;";
-        let mut lexer = Lexer::new(source);
-        let tokens = lexer.lex().unwrap();
-        let expected = vec![
+        ]
+    );
+
+    test_lexer!(
+        can_handle_keywords_and_identifiers,
+        "const answer : int = 42;",
+        &vec![
+            Token::Const,
             Token::Identifier("answer".to_string()),
             Token::Colon,
             Token::Int,
@@ -324,33 +324,27 @@ mod tests {
             Token::IntegerLiteral(42),
             Token::Semicolon,
             Token::Eof,
-        ];
-        assert_eq!(&tokens, &expected);
-    }
+        ]
+    );
 
-    #[test]
-    fn lex_can_handle_keywords() {
-        let source = "return 42;";
-        let mut lexer = Lexer::new(source);
-        let tokens = lexer.lex().unwrap();
-        let expected = vec![
+    test_lexer!(
+        can_handle_keywords,
+        "return 42;",
+        &vec![
             Token::Return,
             Token::IntegerLiteral(42),
             Token::Semicolon,
             Token::Eof,
-        ];
-        assert_eq!(&tokens, &expected);
-    }
+        ]
+    );
 
-    #[test]
-    fn lex_function() {
-        let source = r#"
+    test_lexer!(
+        lex_function,
+        r#"
 const answer : int = 42;
 
-function sumArray(arr: array[int], size: int) -> int {}"#;
-        let mut lexer = Lexer::new(source);
-        let tokens = lexer.lex().unwrap();
-        let expected = vec![
+function sumArray(arr: array[int], size: int) -> int {}"#,
+        &vec![
             Token::Const,
             Token::Identifier("answer".to_string()),
             Token::Colon,
@@ -377,7 +371,37 @@ function sumArray(arr: array[int], size: int) -> int {}"#;
             Token::LBrace,
             Token::RBrace,
             Token::Eof,
-        ];
-        assert_eq!(&tokens, &expected);
-    }
+        ]
+    );
+
+    test_lexer!(
+        can_handle_conditionals,
+        r#"
+        if ( a > 42) {
+            return true;
+        } else {
+            return false;
+        }
+        "#,
+        &vec![
+            Token::If,
+            Token::LParen,
+            Token::Identifier("a".to_string()),
+            Token::Greater,
+            Token::IntegerLiteral(42),
+            Token::RParen,
+            Token::LBrace,
+            Token::Return,
+            Token::True,
+            Token::Semicolon,
+            Token::RBrace,
+            Token::Else,
+            Token::LBrace,
+            Token::Return,
+            Token::False,
+            Token::Semicolon,
+            Token::RBrace,
+            Token::Eof,
+        ]
+    );
 }
