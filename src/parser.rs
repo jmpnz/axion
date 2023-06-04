@@ -16,7 +16,7 @@ impl Parser {
     /// produced by the `Lexer` is passed to the `Parser`.
     pub fn new(tokens: Vec<Token>) -> Self {
         Self {
-            tokens: tokens,
+            tokens,
             pos: 0,
         }
     }
@@ -180,7 +180,7 @@ impl Parser {
             self.advance();
             return true;
         }
-        return false;
+        false
     }
 
     /// Advance the parser to the next token.
