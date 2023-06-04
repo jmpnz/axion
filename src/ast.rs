@@ -29,6 +29,8 @@ pub enum Stmt {
     // we can get away by apply desugaring, essentially representing "for"
     // loops at the syntax level as "While" loops at the ast level.
     While(Expr, Box<Stmt>),
+    // Break statements break out of loops.
+    Break,
 }
 
 /// Expressions in axion can be literals, unary, binary, assignments...

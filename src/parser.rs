@@ -56,6 +56,10 @@ impl Parser {
             self.eat(&Token::Semicolon);
             return ast::Stmt::Return(expr);
         }
+        if self.next(&Token::Break) {
+            self.eat(&Token::Semicolon);
+            return ast::Stmt::Break;
+        }
         if self.next(&Token::LBrace) {
             return self.block();
         }
@@ -598,7 +602,7 @@ mod tests {
 
     test_statement_parser!(
         for_statement,
-        "for (let i : int = 0;i < 10; i = i + 1) { }",
+        "for (let i : int = 0;i < 10; i = i + 1) { break; }",
         ast::Stmt::Block(vec![
             ast::Stmt::Var(
                 "i".to_string(),
@@ -611,8 +615,9 @@ mod tests {
                     Box::new(ast::Expr::Var("i".to_string())),
                     Box::new(ast::Expr::Literal(ast::LiteralValue::Int(10))),
                 ),
-                Box::new(ast::Stmt::Block(vec![ast::Stmt::Expr(
-                    ast::Expr::Assign(
+                Box::new(ast::Stmt::Block(vec![
+                    ast::Stmt::Break,
+                    ast::Stmt::Expr(ast::Expr::Assign(
                         "i".to_string(),
                         Box::new(ast::Expr::Binary(
                             Token::Plus,
@@ -621,8 +626,8 @@ mod tests {
                                 ast::LiteralValue::Int(1)
                             )),
                         )),
-                    ),
-                ),]))
+                    ),),
+                ]),)
             )
         ])
     );
