@@ -34,7 +34,7 @@ pub enum Expr {
     // Assignment expressions associate an identifier with an expression.
     Assign(token::Token, Box<Expr>),
     // Variable expressions associate an identifier to an expression.
-    Var(token::Token),
+    Var(String),
     // Grouping expressions are expressions enclosed in parenthesis to denote
     // their grouping.
     Grouping(Box<Expr>),

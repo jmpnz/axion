@@ -153,6 +153,7 @@ impl Parser {
             Token::CharacterLiteral(v) => {
                 ast::Expr::Literal(ast::LiteralValue::Char(v))
             }
+            Token::Identifier(ident) => ast::Expr::Var(ident),
             Token::LParen => {
                 self.advance();
                 let grouping = self.expression();
