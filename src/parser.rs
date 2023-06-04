@@ -65,6 +65,9 @@ impl Parser {
         if self.next(&Token::While) {
             return self.while_stmt();
         }
+        if self.next(&Token::For) {
+            return self.for_stmt();
+        }
         self.expression_statement()
     }
 
@@ -103,6 +106,48 @@ impl Parser {
         ast::Stmt::While(condition, body)
     }
 
+    /// Parse a for statement.
+    fn for_stmt(&mut self) -> ast::Stmt {
+        self.eat(&Token::LParen);
+        let initializer = match self.advance() {
+            Token::Semicolon => None,
+            Token::Let => Some(self.var_declaration()),
+            _ => Some(self.expression_statement()),
+        };
+        let loop_condition = if !self.check(&Token::Semicolon) {
+            Some(self.expression())
+        } else {
+            None
+        };
+        self.eat(&Token::Semicolon);
+        let increment = if !self.check(&Token::RParen) {
+            Some(self.expression())
+        } else {
+            None
+        };
+        self.eat(&Token::RParen);
+        let mut body = self.statement();
+        match increment {
+            Some(inc) => match body {
+                ast::Stmt::Block(ref mut stmts) => {
+                    stmts.push(ast::Stmt::Expr(inc))
+                }
+                _ => (),
+            },
+            None => (),
+        };
+        let condition = match loop_condition {
+            Some(expr) => expr,
+            None => ast::Expr::Literal(ast::LiteralValue::Boolean(true)),
+        };
+        body = ast::Stmt::While(condition, Box::new(body));
+
+        let new_body = match initializer {
+            Some(stmt) => ast::Stmt::Block(vec![stmt, body]),
+            None => body,
+        };
+        new_body
+    }
     /// Parse an expression statement.
     fn expression_statement(&mut self) -> ast::Stmt {
         let expr = self.expression();
@@ -245,7 +290,7 @@ impl Parser {
                 let grouping = self.expression();
                 ast::Expr::Grouping(Box::new(grouping))
             }
-            _ => panic!("Unexpected token"),
+            _ => panic!("Unexpected token : {}", self.peek()),
         };
         self.advance();
         expr
@@ -534,22 +579,51 @@ mod tests {
     );
 
     test_statement_parser!(
-    while_statement,
-    "while (true) { i = i + 1; }",
-    ast::Stmt::While(
-        ast::Expr::Literal(ast::LiteralValue::Boolean(true)),
-        Box::new(ast::Stmt::Block(vec![
-            ast::Stmt::Expr(
+        while_statement,
+        "while (true) { i = i + 1; }",
+        ast::Stmt::While(
+            ast::Expr::Literal(ast::LiteralValue::Boolean(true)),
+            Box::new(ast::Stmt::Block(vec![ast::Stmt::Expr(
                 ast::Expr::Assign(
                     "i".to_string(),
                     Box::new(ast::Expr::Binary(
-                            Token::Plus,
-                            Box::new(ast::Expr::Var("i".to_string())),
-                            Box::new(ast::Expr::Literal(ast::LiteralValue::Int(1))),
+                        Token::Plus,
+                        Box::new(ast::Expr::Var("i".to_string())),
+                        Box::new(ast::Expr::Literal(ast::LiteralValue::Int(1))),
                     )),
                 ),
-            ),
-        ])),
+            ),])),
         )
+    );
+
+    test_statement_parser!(
+        for_statement,
+        "for (let i : int = 0;i < 10; i = i + 1) { }",
+        ast::Stmt::Block(vec![
+            ast::Stmt::Var(
+                "i".to_string(),
+                DeclType::Integer,
+                Some(ast::Expr::Literal(ast::LiteralValue::Int(0))),
+            ),
+            ast::Stmt::While(
+                ast::Expr::Binary(
+                    Token::Lesser,
+                    Box::new(ast::Expr::Var("i".to_string())),
+                    Box::new(ast::Expr::Literal(ast::LiteralValue::Int(10))),
+                ),
+                Box::new(ast::Stmt::Block(vec![ast::Stmt::Expr(
+                    ast::Expr::Assign(
+                        "i".to_string(),
+                        Box::new(ast::Expr::Binary(
+                            Token::Plus,
+                            Box::new(ast::Expr::Var("i".to_string())),
+                            Box::new(ast::Expr::Literal(
+                                ast::LiteralValue::Int(1)
+                            )),
+                        )),
+                    ),
+                ),]))
+            )
+        ])
     );
 }

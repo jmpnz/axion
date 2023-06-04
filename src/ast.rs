@@ -22,9 +22,12 @@ pub enum Stmt {
     // If statements evaluate an expression and executing a branch depending
     // on the evaluation result, the else branch is optional.
     If(Expr, Box<Stmt>, Option<Box<Stmt>>),
-    // While statements are for looping control flow, the body of the loop
+    // "While" statements are for looping control flow, the body of the loop
     // is executed as long as the condition is fullfilled i.e evaluates to
     // true.
+    // While we support "for" loops at the language level for representation
+    // we can get away by apply desugaring, essentially representing "for"
+    // loops at the syntax level as "While" loops at the ast level.
     While(Expr, Box<Stmt>),
 }
 
