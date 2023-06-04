@@ -15,10 +15,7 @@ impl Parser {
     /// Creates a new `Parser` instance ownership of the token stream
     /// produced by the `Lexer` is passed to the `Parser`.
     pub fn new(tokens: Vec<Token>) -> Self {
-        Self {
-            tokens,
-            pos: 0,
-        }
+        Self { tokens, pos: 0 }
     }
 
     /// Parse a declaration.
@@ -59,9 +56,23 @@ impl Parser {
             self.eat(&Token::Semicolon);
             return ast::Stmt::Return(Box::new(expr));
         }
+        if self.next(&Token::LBrace) {
+            return self.block();
+        }
         self.expression_statement()
     }
 
+    /// Parse a block statement.
+    fn block(&mut self) -> ast::Stmt {
+        let mut stmts: Vec<ast::Stmt> = Vec::new();
+
+        while !self.check(&Token::RBrace) && !self.eof() {
+            let stmt = self.declaration();
+            stmts.push(stmt);
+        }
+        self.eat(&Token::RBrace);
+        ast::Stmt::Block(stmts)
+    }
     /// Parse an expression statement.
     fn expression_statement(&mut self) -> ast::Stmt {
         let expr = self.expression();
@@ -71,7 +82,26 @@ impl Parser {
 
     /// Parse an expression.
     fn expression(&mut self) -> ast::Expr {
-        self.equality()
+        self.assignment()
+    }
+
+    /// Parse an assignment expression.
+    fn assignment(&mut self) -> ast::Expr {
+        let mut expr = self.equality();
+
+        if self.next(&Token::Equal) {
+            let equals = self.previous();
+            let value = self.assignment();
+
+            match expr {
+                ast::Expr::Var(name) => {
+                    return ast::Expr::Assign(name, Box::new(value))
+                }
+                _ => panic!("Invalid assignment target"),
+            }
+        }
+
+        expr
     }
 
     /// Parse an equality expression.
@@ -361,6 +391,39 @@ mod tests {
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(1)))
         )
     );
+    test_parser!(
+        assignment_expr,
+        "a = 42;",
+        ast::Expr::Assign(
+            "a".to_string(),
+            Box::new(ast::Expr::Literal(ast::LiteralValue::Int(42))),
+        )
+    );
+
+    #[test]
+    fn parse_block() {
+        let source = "{ let a : int = 42;\n let b : boolean = true; }";
+        let mut lexer = Lexer::new(source);
+        let tokens = lexer.lex().unwrap();
+        let mut parser = Parser::new(tokens);
+        let ast = parser.declaration();
+        let expected = ast::Stmt::Block(vec![
+            ast::Stmt::Var(
+                "a".to_string(),
+                DeclType::Integer,
+                Some(Box::new(ast::Expr::Literal(ast::LiteralValue::Int(42)))),
+            ),
+            ast::Stmt::Var(
+                "b".to_string(),
+                DeclType::Boolean,
+                Some(Box::new(ast::Expr::Literal(ast::LiteralValue::Boolean(
+                    true,
+                )))),
+            ),
+        ]);
+        assert_eq!(ast, expected);
+        println!("Declaration : {:?}", ast);
+    }
     #[test]
     fn parse_var_decl() {
         let source = "let a : int = 42;";

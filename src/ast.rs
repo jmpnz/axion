@@ -17,6 +17,8 @@ pub enum Stmt {
     Expr(Box<Expr>),
     // Return statements are statements that return expressions.
     Return(Box<Expr>),
+    // Block statements are sequences of statements.
+    Block(Vec<Stmt>),
 }
 
 /// Expressions in axion can be literals, unary, binary, assignments...
@@ -32,7 +34,7 @@ pub enum Expr {
     // expressions
     Logical(token::Token, Box<Expr>, Box<Expr>),
     // Assignment expressions associate an identifier with an expression.
-    Assign(token::Token, Box<Expr>),
+    Assign(String, Box<Expr>),
     // Variable expressions associate an identifier to an expression.
     Var(String),
     // Grouping expressions are expressions enclosed in parenthesis to denote
