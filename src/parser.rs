@@ -271,8 +271,8 @@ mod tests {
     use crate::lexer::Lexer;
     use crate::types::DeclType;
 
-    // Macro to generate test cases for parsing.
-    macro_rules! test_parser {
+    // Macro to generate test cases for parsing expressions.
+    macro_rules! test_expression_parser {
         ($name:ident, $source:expr, $expected:expr) => {
             #[test]
             fn $name() {
@@ -286,7 +286,22 @@ mod tests {
         };
     }
 
-    test_parser!(
+    // Macro to generate test cases for parsing statements.
+    macro_rules! test_statement_parser {
+        ($name:ident, $source:expr, $expected:expr) => {
+            #[test]
+            fn $name() {
+                let source = $source;
+                let mut lexer = Lexer::new(source);
+                let tokens = lexer.lex().unwrap();
+                let mut parser = Parser::new(tokens);
+                let ast = parser.declaration();
+                assert_eq!(ast, $expected);
+            }
+        };
+    }
+
+    test_expression_parser!(
         equality_expr,
         "5 == 5",
         ast::Expr::Binary(
@@ -296,7 +311,7 @@ mod tests {
         )
     );
 
-    test_parser!(
+    test_expression_parser!(
         inequality_expr,
         "5 != 4",
         ast::Expr::Binary(
@@ -305,7 +320,7 @@ mod tests {
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(4))),
         )
     );
-    test_parser!(
+    test_expression_parser!(
         comparison_gte_expr,
         "5 >= 4",
         ast::Expr::Binary(
@@ -314,7 +329,7 @@ mod tests {
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(4))),
         )
     );
-    test_parser!(
+    test_expression_parser!(
         comparison_lte_expr,
         "5 <= 4",
         ast::Expr::Binary(
@@ -323,7 +338,7 @@ mod tests {
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(4))),
         )
     );
-    test_parser!(
+    test_expression_parser!(
         unary_expr,
         "!true",
         ast::Expr::Unary(
@@ -331,7 +346,7 @@ mod tests {
             Box::new(ast::Expr::Literal(ast::LiteralValue::Boolean(true))),
         )
     );
-    test_parser!(
+    test_expression_parser!(
         add_expr,
         "5 + 5",
         ast::Expr::Binary(
@@ -340,7 +355,7 @@ mod tests {
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
         )
     );
-    test_parser!(
+    test_expression_parser!(
         sub_expr,
         "5 - 5",
         ast::Expr::Binary(
@@ -349,7 +364,7 @@ mod tests {
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
         )
     );
-    test_parser!(
+    test_expression_parser!(
         mul_expr,
         "5 * 5",
         ast::Expr::Binary(
@@ -358,7 +373,7 @@ mod tests {
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
         )
     );
-    test_parser!(
+    test_expression_parser!(
         div_expr,
         "5 / 5",
         ast::Expr::Binary(
@@ -367,7 +382,7 @@ mod tests {
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
         )
     );
-    test_parser!(
+    test_expression_parser!(
         grouping_expr,
         "(5 / 5) * (3/4 + 1)",
         ast::Expr::Binary(
@@ -388,7 +403,7 @@ mod tests {
             ),)))
         )
     );
-    test_parser!(
+    test_expression_parser!(
         precedence_expr,
         "5 / 5 * 3/4 + 1",
         ast::Expr::Binary(
@@ -409,7 +424,7 @@ mod tests {
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(1)))
         )
     );
-    test_parser!(
+    test_expression_parser!(
         assignment_expr,
         "a = 42;",
         ast::Expr::Assign(
@@ -418,14 +433,10 @@ mod tests {
         )
     );
 
-    #[test]
-    fn parse_block() {
-        let source = "{ let a : int = 42;\n let b : boolean = true; }";
-        let mut lexer = Lexer::new(source);
-        let tokens = lexer.lex().unwrap();
-        let mut parser = Parser::new(tokens);
-        let ast = parser.declaration();
-        let expected = ast::Stmt::Block(vec![
+    test_statement_parser!(
+        variable_declaration,
+        "{ let a : int = 42;\n let b : boolean = true; }",
+        ast::Stmt::Block(vec![
             ast::Stmt::Var(
                 "a".to_string(),
                 DeclType::Integer,
@@ -434,23 +445,15 @@ mod tests {
             ast::Stmt::Var(
                 "b".to_string(),
                 DeclType::Boolean,
-                Some(ast::Expr::Literal(ast::LiteralValue::Boolean(
-                    true,
-                ))),
-            ),
-        ]);
-        assert_eq!(ast, expected);
-        println!("Declaration : {:?}", ast);
-    }
+                Some(ast::Expr::Literal(ast::LiteralValue::Boolean(true,))),
+            )
+        ])
+    );
 
-    #[test]
-    fn parse_if_stmt() {
-        let source = "if ( a == 42 ) { a = a + 1;} else { a = a -1; }";
-        let mut lexer = Lexer::new(source);
-        let tokens = lexer.lex().unwrap();
-        let mut parser = Parser::new(tokens);
-        let ast = parser.declaration();
-        let expected = ast::Stmt::If(
+    test_statement_parser!(
+        if_statement_with_else_branch,
+        "if ( a == 42 ) { a = a + 1;} else { a = a -1; }",
+        ast::Stmt::If(
             ast::Expr::Binary(
                 Token::EqualEqual,
                 Box::new(ast::Expr::Var("a".to_string())),
@@ -476,24 +479,6 @@ mod tests {
                     )),
                 ),
             )]))),
-        );
-        assert_eq!(ast, expected);
-        println!("Declaration : {:?}", ast);
-    }
-
-    #[test]
-    fn parse_var_decl() {
-        let source = "let a : int = 42;";
-        let mut lexer = Lexer::new(source);
-        let tokens = lexer.lex().unwrap();
-        let mut parser = Parser::new(tokens);
-        let ast = parser.declaration();
-        let expected = ast::Stmt::Var(
-            "a".to_string(),
-            DeclType::Integer,
-            Some(ast::Expr::Literal(ast::LiteralValue::Int(42))),
-        );
-        assert_eq!(ast, expected);
-        println!("Declaration : {:?}", ast);
-    }
+        )
+    );
 }
