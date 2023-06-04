@@ -22,6 +22,10 @@ pub enum Stmt {
     // If statements evaluate an expression and executing a branch depending
     // on the evaluation result, the else branch is optional.
     If(Expr, Box<Stmt>, Option<Box<Stmt>>),
+    // While statements are for looping control flow, the body of the loop
+    // is executed as long as the condition is fullfilled i.e evaluates to
+    // true.
+    While(Expr, Box<Stmt>),
 }
 
 /// Expressions in axion can be literals, unary, binary, assignments...

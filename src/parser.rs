@@ -62,6 +62,9 @@ impl Parser {
         if self.next(&Token::If) {
             return self.if_stmt();
         }
+        if self.next(&Token::While) {
+            return self.while_stmt();
+        }
         self.expression_statement()
     }
 
@@ -89,6 +92,15 @@ impl Parser {
             else_branch = Some(Box::new(self.statement()));
         }
         ast::Stmt::If(condition, then_branch, else_branch)
+    }
+
+    /// Parse a while statement.
+    fn while_stmt(&mut self) -> ast::Stmt {
+        self.eat(&Token::LParen);
+        let condition = self.expression();
+        self.eat(&Token::RParen);
+        let body = Box::new(self.statement());
+        ast::Stmt::While(condition, body)
     }
 
     /// Parse an expression statement.
@@ -518,6 +530,26 @@ mod tests {
                     )),
                 ),
             )]))),
+        )
+    );
+
+    test_statement_parser!(
+    while_statement,
+    "while (true) { i = i + 1; }",
+    ast::Stmt::While(
+        ast::Expr::Literal(ast::LiteralValue::Boolean(true)),
+        Box::new(ast::Stmt::Block(vec![
+            ast::Stmt::Expr(
+                ast::Expr::Assign(
+                    "i".to_string(),
+                    Box::new(ast::Expr::Binary(
+                            Token::Plus,
+                            Box::new(ast::Expr::Var("i".to_string())),
+                            Box::new(ast::Expr::Literal(ast::LiteralValue::Int(1))),
+                    )),
+                ),
+            ),
+        ])),
         )
     );
 }
