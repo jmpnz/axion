@@ -3,18 +3,23 @@
 use crate::token;
 use crate::types;
 
-/// Declarations involve variable and function declarations.
+/// Statements in axion are no different than statements in C or JavaScript
+/// they include the usual control flow statements and declarartions.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Decl {
+pub enum Stmt {
     // Variable declarations associate an identifier with a declaration type
     // and a value.
-    Var(String, types::DeclType, Expr),
+    Var(String, types::DeclType, Option<Box<Expr>>),
     // Function declarations associate an identifier with a return type, args
     // and a body.
     Function(String, types::DeclType),
+    // Expression statement are statements that induce side effects.
+    Expr(Box<Expr>),
+    // Return statements are statements that return expressions.
+    Return(Box<Expr>),
 }
 
-/// Expressions in axion can be literals, unary, binary or assignments.
+/// Expressions in axion can be literals, unary, binary, assignments...
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
     // Literal expressions simply return the literal value.

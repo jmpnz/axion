@@ -21,6 +21,54 @@ impl Parser {
         }
     }
 
+    /// Parse a declaration.
+    fn declaration(&mut self) -> ast::Stmt {
+        if self.next(&Token::Let) {
+            return self.var_declaration();
+        }
+        self.statement()
+    }
+
+    /// Parse a variable declaration.
+    fn var_declaration(&mut self) -> ast::Stmt {
+        let ident = self.advance();
+        if let Token::Identifier(name) = ident {
+            let mut initializer = None;
+            self.eat(&Token::Colon);
+            let t = match self.advance() {
+                Token::Int => DeclType::Integer,
+                Token::String => DeclType::String,
+                Token::Char => DeclType::Char,
+                Token::Boolean => DeclType::Boolean,
+                _ => panic!("Unknown declaration type"),
+            };
+            if self.next(&Token::Equal) {
+                let expr = self.expression();
+                initializer = Some(Box::new(expr));
+            }
+            self.eat(&Token::Semicolon);
+            return ast::Stmt::Var(name, t, initializer);
+        }
+        panic!("Expected identifier got")
+    }
+
+    /// Parse a statement.
+    fn statement(&mut self) -> ast::Stmt {
+        if self.next(&Token::Return) {
+            let expr = self.expression();
+            self.eat(&Token::Semicolon);
+            return ast::Stmt::Return(Box::new(expr));
+        }
+        self.expression_statement()
+    }
+
+    /// Parse an expression statement.
+    fn expression_statement(&mut self) -> ast::Stmt {
+        let expr = self.expression();
+        self.eat(&Token::Semicolon);
+        ast::Stmt::Expr(Box::new(expr))
+    }
+
     /// Parse an expression.
     fn expression(&mut self) -> ast::Expr {
         self.equality()
@@ -112,7 +160,7 @@ impl Parser {
             }
             _ => panic!("Unexpected token"),
         };
-        let tok = self.advance();
+        self.advance();
         expr
     }
 
@@ -172,6 +220,7 @@ impl Parser {
 mod tests {
     use super::*;
     use crate::lexer::Lexer;
+    use crate::types::DeclType;
 
     // Macro to generate test cases for parsing.
     macro_rules! test_parser {
@@ -311,4 +360,19 @@ mod tests {
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(1)))
         )
     );
+    #[test]
+    fn parse_var_decl() {
+        let source = "let a : int = 42;";
+        let mut lexer = Lexer::new(source);
+        let tokens = lexer.lex().unwrap();
+        let mut parser = Parser::new(tokens);
+        let ast = parser.declaration();
+        let expected = ast::Stmt::Var(
+            "a".to_string(),
+            DeclType::Integer,
+            Some(Box::new(ast::Expr::Literal(ast::LiteralValue::Int(42)))),
+        );
+        assert_eq!(ast, expected);
+        println!("Declaration : {:?}", ast);
+    }
 }
