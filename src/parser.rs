@@ -31,7 +31,52 @@ impl Parser {
 
     /// Parse a function declaration.
     fn function_declaration(&mut self) -> ast::Stmt {
-        ast::Stmt::Block(vec![])
+        let tok = self.advance();
+        let name = /*self.eat(&Token::Identifier)*/ Parser::destruct_ident(&tok).expect(format!("Expected identifier got {}", tok).as_str());
+
+        self.eat(&Token::LParen);
+        let mut params: Vec<ast::Parameter> = Vec::new();
+        if !self.next(&Token::RParen) {
+            loop {
+                let ident = self.advance();
+                self.eat(&Token::Colon);
+
+                let t = match self.advance() {
+                    Token::Int => DeclType::Integer,
+                    Token::String => DeclType::String,
+                    Token::Char => DeclType::Char,
+                    Token::Boolean => DeclType::Boolean,
+                    _ => panic!("Unknown declaration type"),
+                };
+                let param = ast::Parameter(ident, t);
+                params.push(param);
+                if !self.next(&Token::Comma) {
+                    break;
+                }
+            }
+        }
+        self.eat(&Token::RParen);
+        self.eat(&Token::Arrow);
+        let ret_type = match self.advance() {
+            Token::Int => DeclType::Integer,
+            Token::String => DeclType::String,
+            Token::Char => DeclType::Char,
+            Token::Boolean => DeclType::Boolean,
+            _ => panic!("Unknown declaration type"),
+        };
+
+        self.eat(&Token::LBrace);
+        let block = self.block();
+        ast::Stmt::Function(name, ret_type, params, Box::new(block))
+    }
+
+    // Destruct an identifier returning a the `String` if there's one
+    // or `None`.
+    fn destruct_ident(ident: &Token) -> Option<String> {
+        if let &Token::Identifier(name) = &ident {
+            return Some(name.clone());
+        }
+        None
     }
 
     /// Parse a variable declaration.
@@ -334,7 +379,11 @@ impl Parser {
         if self.check(expected) {
             return self.advance();
         }
-        panic!("eat: expected token : {} but found : {}", expected,self.peek())
+        panic!(
+            "eat: expected token : {} but found : {}",
+            expected,
+            self.peek()
+        )
     }
 
     /// Next matches the current token against `expected` advancing the cursor
@@ -671,5 +720,22 @@ mod tests {
                 ]),)
             )
         ])
+    );
+
+    test_statement_parser!(
+        function_declaration,
+        r#"
+        function sum100(i : int) -> int {
+            return i;
+        }
+        "#,
+        ast::Stmt::Function(
+            "sum100".to_string(),
+            DeclType::Integer,
+            vec![ast::Parameter(Token::Identifier("i".to_string()), DeclType::Integer)],
+            Box::new(ast::Stmt::Block(vec![
+                ast::Stmt::Return(ast::Expr::Var("i".to_string())),
+            ])),
+        )
     );
 }

@@ -3,6 +3,10 @@
 use crate::token;
 use crate::types;
 
+/// Function parameters are identifiers with a type.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Parameter(pub token::Token, pub types::DeclType);
+
 /// Statements in axion are no different than statements in C or JavaScript
 /// they include the usual control flow statements and declarartions.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -12,7 +16,7 @@ pub enum Stmt {
     Var(String, types::DeclType, Option<Expr>),
     // Function declarations associate an identifier with a return type, args
     // and a body.
-    Function(String, types::DeclType),
+    Function(String, types::DeclType, Vec<Parameter>, Box<Stmt>),
     // Expression statement are statements that induce side effects.
     Expr(Expr),
     // Return statements are statements that return expressions.
