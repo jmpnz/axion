@@ -41,7 +41,7 @@ impl Parser {
             };
             if self.next(&Token::Equal) {
                 let expr = self.expression();
-                initializer = Some(Box::new(expr));
+                initializer = Some(expr);
             }
             self.eat(&Token::Semicolon);
             return ast::Stmt::Var(name, t, initializer);
@@ -54,10 +54,13 @@ impl Parser {
         if self.next(&Token::Return) {
             let expr = self.expression();
             self.eat(&Token::Semicolon);
-            return ast::Stmt::Return(Box::new(expr));
+            return ast::Stmt::Return(expr);
         }
         if self.next(&Token::LBrace) {
             return self.block();
+        }
+        if self.next(&Token::If) {
+            return self.if_stmt();
         }
         self.expression_statement()
     }
@@ -73,11 +76,26 @@ impl Parser {
         self.eat(&Token::RBrace);
         ast::Stmt::Block(stmts)
     }
+
+    /// Parse an if statement.
+    fn if_stmt(&mut self) -> ast::Stmt {
+        self.eat(&Token::LParen);
+        let condition = self.expression();
+        self.eat(&Token::RParen);
+
+        let then_branch = Box::new(self.statement());
+        let mut else_branch = None;
+        if self.next(&Token::Else) {
+            else_branch = Some(Box::new(self.statement()));
+        }
+        ast::Stmt::If(condition, then_branch, else_branch)
+    }
+
     /// Parse an expression statement.
     fn expression_statement(&mut self) -> ast::Stmt {
         let expr = self.expression();
         self.eat(&Token::Semicolon);
-        ast::Stmt::Expr(Box::new(expr))
+        ast::Stmt::Expr(expr)
     }
 
     /// Parse an expression.
@@ -411,19 +429,58 @@ mod tests {
             ast::Stmt::Var(
                 "a".to_string(),
                 DeclType::Integer,
-                Some(Box::new(ast::Expr::Literal(ast::LiteralValue::Int(42)))),
+                Some(ast::Expr::Literal(ast::LiteralValue::Int(42))),
             ),
             ast::Stmt::Var(
                 "b".to_string(),
                 DeclType::Boolean,
-                Some(Box::new(ast::Expr::Literal(ast::LiteralValue::Boolean(
+                Some(ast::Expr::Literal(ast::LiteralValue::Boolean(
                     true,
-                )))),
+                ))),
             ),
         ]);
         assert_eq!(ast, expected);
         println!("Declaration : {:?}", ast);
     }
+
+    #[test]
+    fn parse_if_stmt() {
+        let source = "if ( a == 42 ) { a = a + 1;} else { a = a -1; }";
+        let mut lexer = Lexer::new(source);
+        let tokens = lexer.lex().unwrap();
+        let mut parser = Parser::new(tokens);
+        let ast = parser.declaration();
+        let expected = ast::Stmt::If(
+            ast::Expr::Binary(
+                Token::EqualEqual,
+                Box::new(ast::Expr::Var("a".to_string())),
+                Box::new(ast::Expr::Literal(ast::LiteralValue::Int(42))),
+            ),
+            Box::new(ast::Stmt::Block(vec![ast::Stmt::Expr(
+                ast::Expr::Assign(
+                    "a".to_string(),
+                    Box::new(ast::Expr::Binary(
+                        Token::Plus,
+                        Box::new(ast::Expr::Var("a".to_string())),
+                        Box::new(ast::Expr::Literal(ast::LiteralValue::Int(1))),
+                    )),
+                ),
+            )])),
+            Some(Box::new(ast::Stmt::Block(vec![ast::Stmt::Expr(
+                ast::Expr::Assign(
+                    "a".to_string(),
+                    Box::new(ast::Expr::Binary(
+                        Token::Minus,
+                        Box::new(ast::Expr::Var("a".to_string())),
+                        Box::new(ast::Expr::Literal(ast::LiteralValue::Int(1))),
+                    )),
+                ),
+            )]))),
+        );
+        assert_eq!(ast, expected);
+        println!("Declaration : {:?}", ast);
+    }
+
     #[test]
     fn parse_var_decl() {
         let source = "let a : int = 42;";
@@ -434,7 +491,7 @@ mod tests {
         let expected = ast::Stmt::Var(
             "a".to_string(),
             DeclType::Integer,
-            Some(Box::new(ast::Expr::Literal(ast::LiteralValue::Int(42)))),
+            Some(ast::Expr::Literal(ast::LiteralValue::Int(42))),
         );
         assert_eq!(ast, expected);
         println!("Declaration : {:?}", ast);

@@ -9,16 +9,19 @@ use crate::types;
 pub enum Stmt {
     // Variable declarations associate an identifier with a declaration type
     // and a value.
-    Var(String, types::DeclType, Option<Box<Expr>>),
+    Var(String, types::DeclType, Option<Expr>),
     // Function declarations associate an identifier with a return type, args
     // and a body.
     Function(String, types::DeclType),
     // Expression statement are statements that induce side effects.
-    Expr(Box<Expr>),
+    Expr(Expr),
     // Return statements are statements that return expressions.
-    Return(Box<Expr>),
+    Return(Expr),
     // Block statements are sequences of statements.
     Block(Vec<Stmt>),
+    // If statements evaluate an expression and executing a branch depending
+    // on the evaluation result, the else branch is optional.
+    If(Expr, Box<Stmt>, Option<Box<Stmt>>),
 }
 
 /// Expressions in axion can be literals, unary, binary, assignments...
