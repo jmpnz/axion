@@ -105,7 +105,7 @@ impl Parser {
 
     /// Parse an assignment expression.
     fn assignment(&mut self) -> ast::Expr {
-        let mut expr = self.equality();
+        let mut expr = self.or();
 
         if self.next(&Token::Equal) {
             let equals = self.previous();
@@ -119,6 +119,32 @@ impl Parser {
             }
         }
 
+        expr
+    }
+
+    /// Parse an or expression.
+    fn or(&mut self) -> ast::Expr {
+        let mut expr = self.and();
+
+        if self.next(&Token::Or) {
+            let operator = self.previous();
+            let right = self.and();
+            expr =
+                ast::Expr::Logical(operator, Box::new(expr), Box::new(right));
+        }
+        expr
+    }
+
+    /// Parse an and expression.
+    fn and(&mut self) -> ast::Expr {
+        let mut expr = self.equality();
+
+        if self.next(&Token::And) {
+            let operator = self.previous();
+            let right = self.equality();
+            expr =
+                ast::Expr::Logical(operator, Box::new(expr), Box::new(right));
+        }
         expr
     }
 
@@ -380,6 +406,19 @@ mod tests {
             Token::Slash,
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
+        )
+    );
+    test_expression_parser!(
+        or_expr,
+        "true || (5 == 5)",
+        ast::Expr::Logical(
+            Token::Or,
+            Box::new(ast::Expr::Literal(ast::LiteralValue::Boolean(true))),
+            Box::new(ast::Expr::Grouping(Box::new(ast::Expr::Binary(
+                Token::EqualEqual,
+                Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
+                Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
+            )))),
         )
     );
     test_expression_parser!(
