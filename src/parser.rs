@@ -23,7 +23,15 @@ impl Parser {
         if self.next(&Token::Let) {
             return self.var_declaration();
         }
+        if self.next(&Token::Function) {
+            return self.function_declaration();
+        }
         self.statement()
+    }
+
+    /// Parse a function declaration.
+    fn function_declaration(&mut self) -> ast::Stmt {
+        ast::Stmt::Block(vec![])
     }
 
     /// Parse a variable declaration.
@@ -269,7 +277,28 @@ impl Parser {
             let expr = ast::Expr::Unary(operator, Box::new(right));
             return expr;
         }
-        self.primary()
+        self.call()
+    }
+
+    /// Parse a function call.
+    fn call(&mut self) -> ast::Expr {
+        let mut expr = self.primary();
+
+        if self.next(&Token::LParen) {
+            let mut args: Vec<ast::Expr> = Vec::new();
+            if !self.next(&Token::RParen) {
+                loop {
+                    let arg = self.expression();
+                    args.push(arg);
+                    if !self.next(&Token::Comma) {
+                        break;
+                    }
+                }
+            }
+            self.eat(&Token::RParen);
+            expr = ast::Expr::Call(Box::new(expr), args);
+        }
+        expr
     }
 
     /// Parse a primary expression.
@@ -305,7 +334,7 @@ impl Parser {
         if self.check(expected) {
             return self.advance();
         }
-        panic!("Unexpected token : {}", expected)
+        panic!("eat: expected token : {} but found : {}", expected,self.peek())
     }
 
     /// Next matches the current token against `expected` advancing the cursor
@@ -530,6 +559,18 @@ mod tests {
         ast::Expr::Assign(
             "a".to_string(),
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(42))),
+        )
+    );
+
+    test_expression_parser!(
+        call_expr,
+        "identity(3,3);",
+        ast::Expr::Call(
+            Box::new(ast::Expr::Var("identity".to_string())),
+            vec![
+                ast::Expr::Literal(ast::LiteralValue::Int(3)),
+                ast::Expr::Literal(ast::LiteralValue::Int(3)),
+            ],
         )
     );
 

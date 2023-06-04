@@ -54,6 +54,8 @@ pub enum Expr {
     Grouping(Box<Expr>),
     // Index expressions associate a variable with an index expression.
     Index(Box<Expr>, Box<Expr>),
+    // Call expressions.
+    Call(Box<Expr>, Vec<Expr>),
 }
 
 /// Literal values used to represent primitive types.
