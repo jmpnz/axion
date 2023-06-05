@@ -1,4 +1,5 @@
-# axion : a small, statically typed and compiled language for writing scripts
+# axion : a small, statically typed and compiled language
+---
 
 ```javascript
 
@@ -15,4 +16,12 @@ function sumArray(arr: array[int], size: int) -> integer {
 
 ```
 
+The current `axion` compiler is written in Rust and includes a front end with
+a lexer, hand written recursive descent parser with basic error reporting and
+a type checker that does most of the semantic analysis.
+
+The middleware translates the AST representation into an IR and runs various
+optimiziation passes. Currently `axion` has one backend and compiles to only
+a single target architecture (x86-64). The rest of work is dispatched to your
+linker.
 
