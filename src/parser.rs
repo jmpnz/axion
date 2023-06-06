@@ -732,10 +732,13 @@ mod tests {
         ast::Stmt::Function(
             "sum100".to_string(),
             DeclType::Integer,
-            vec![ast::Parameter(Token::Identifier("i".to_string()), DeclType::Integer)],
-            Box::new(ast::Stmt::Block(vec![
-                ast::Stmt::Return(ast::Expr::Var("i".to_string())),
-            ])),
+            vec![ast::Parameter(
+                Token::Identifier("i".to_string()),
+                DeclType::Integer
+            )],
+            Box::new(ast::Stmt::Block(vec![ast::Stmt::Return(
+                ast::Expr::Var("i".to_string())
+            ),])),
         )
     );
 }

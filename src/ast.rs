@@ -72,10 +72,11 @@ pub enum LiteralValue {
 
 /// Visitor trait used to encapsulate AST walking logic.
 pub trait Visitor<T> {
+    /// Visit expressions.
     fn visit_expr(&mut self, expr: &Expr) -> T;
+    /// Visit statements.
     fn visit_stmt(&mut self, stmt: &Stmt) -> T;
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -88,7 +89,7 @@ mod tests {
             Self {}
         }
     }
-    impl Visitor<()>  for ASTPrinter {
+    impl Visitor<()> for ASTPrinter {
         fn visit_expr(&mut self, expr: &Expr) {
             match expr {
                 Expr::Binary(op, ref lhs, ref rhs) => {
@@ -96,41 +97,35 @@ mod tests {
                     println!("{}", op);
                     self.visit_expr(rhs);
                 }
-                Expr::Literal(value) => {
-                    match value {
-                        LiteralValue::Int(x) => println!("{}", x),
-                        _ => println!("Some({:?})", value),
-                    }
-
-                }
+                Expr::Literal(value) => match value {
+                    LiteralValue::Int(x) => println!("{}", x),
+                    _ => println!("Some({:?})", value),
+                },
                 _ => println!("{:?}", expr),
-
             }
         }
 
         fn visit_stmt(&mut self, stmt: &Stmt) {}
     }
     pub fn walk_expr<T>(visitor: &mut dyn Visitor<T>, e: &Expr) {
-    match e {
-        Expr::Binary(op, ref lhs, ref rhs) => {
-            visitor.visit_expr(lhs);
-            visitor.visit_expr(rhs);
+        match e {
+            Expr::Binary(op, ref lhs, ref rhs) => {
+                visitor.visit_expr(lhs);
+                visitor.visit_expr(rhs);
+            }
+            _ => {
+                visitor.visit_expr(e);
+            }
         }
-        _ => {
-            visitor.visit_expr(e);
-        },
     }
-}
     #[test]
     fn can_visit() {
-    let expr = Expr::Binary(
+        let expr = Expr::Binary(
             Token::EqualEqual,
             Box::new(Expr::Literal(LiteralValue::Int(5))),
             Box::new(Expr::Literal(LiteralValue::Int(5))),
         );
-    let mut printer = ASTPrinter::new();
-    walk_expr(&mut printer, &expr);
-
+        let mut printer = ASTPrinter::new();
+        walk_expr(&mut printer, &expr);
     }
-
 }
