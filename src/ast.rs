@@ -70,8 +70,8 @@ pub enum LiteralValue {
     Boolean(bool),
 }
 
-/// Visitor trait used to encapsulate AST walking logic.
-pub trait Visitor<T> {
+/// ASTConsumer trait used to encapsulate AST walking logic.
+pub trait ASTConsumer<T> {
     /// Visit expressions.
     fn visit_expr(&mut self, expr: &Expr) -> T;
     /// Visit statements.
@@ -89,7 +89,7 @@ mod tests {
             Self {}
         }
     }
-    impl Visitor<()> for ASTPrinter {
+    impl ASTConsumer<()> for ASTPrinter {
         fn visit_expr(&mut self, expr: &Expr) {
             match expr {
                 Expr::Binary(op, ref lhs, ref rhs) => {
@@ -107,7 +107,7 @@ mod tests {
 
         fn visit_stmt(&mut self, stmt: &Stmt) {}
     }
-    pub fn walk_expr<T>(visitor: &mut dyn Visitor<T>, e: &Expr) {
+    pub fn walk_expr<T>(visitor: &mut dyn ASTConsumer<T>, e: &Expr) {
         match e {
             Expr::Binary(op, ref lhs, ref rhs) => {
                 visitor.visit_expr(lhs);
