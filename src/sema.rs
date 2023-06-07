@@ -50,9 +50,7 @@ pub struct SymTable {
 
 impl SymTable {
     pub fn new() -> Self {
-        Self {
-            tables: Vec::new(),
-        }
+        Self { tables: Vec::new() }
     }
 }
 
@@ -69,14 +67,19 @@ pub struct SemanticAnalyzer {
 }
 
 impl SemanticAnalyzer {
-    pub fn new(ast : Vec<ast::Stmt>) -> Self {
+    pub fn new(ast: Vec<ast::Stmt>) -> Self {
         Self {
             ast,
             sym_table: SymTable::new(),
         }
     }
-
-    // Resolve a symbol by its name in the symbol table.
-
-
 }
+
+/// Type checking pass is handled by the `TypeChecker` struct that implements
+/// the `ASTConsumer` trait. Once the semantic analysis validates the AST it
+/// creates a symbol table with annoted types for existing declarations in the
+/// program.
+/// Type checking is done by walking the AST and propagating the types from
+/// the leaves to the root of the expression.
+#[derive(Debug)]
+pub struct TypeChecker;
