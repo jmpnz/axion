@@ -52,6 +52,19 @@ impl SymTable {
     pub fn new() -> Self {
         Self { tables: Vec::new() }
     }
+
+    // Resolve a new symbol.
+    pub fn resolve(&self, name: &str) -> Option<Symbol> {
+        None
+    }
+
+    // Bind a new symbol.
+    pub fn bind(&mut self, name: &str, sym: Symbol) {
+        match self.tables.last() {
+            None => self.tables.push(HashMap::new()),
+            Some(tbl) => tbl.try_insert(name.to_string(), sym).unwrap(),
+        }
+    }
 }
 
 /// `SemanticAnalyzer` implements the `ASTConsumer` trait and runs a semantic
