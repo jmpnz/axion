@@ -29,8 +29,8 @@ impl Symbol {
     pub fn new(name: &str, stype: DeclType, scope: Scope) -> Self {
         Self {
             name: name.to_string(),
-            stype: stype,
-            scope: scope,
+            stype,
+            scope,
         }
     }
 
@@ -46,6 +46,12 @@ impl Symbol {
 /// stack pointer to the previous scope.
 pub struct SymTable {
     tables: Vec<HashMap<String, Symbol>>,
+}
+
+impl Default for SymTable {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SymTable {
@@ -88,6 +94,8 @@ impl SemanticAnalyzer {
             sym_table: SymTable::new(),
         }
     }
+
+    //
 }
 
 /// Type checking pass is handled by the `TypeChecker` struct that implements

@@ -18,6 +18,15 @@ impl Parser {
         Self { tokens, pos: 0 }
     }
 
+    pub fn parse(&mut self) -> Vec<ast::Stmt> {
+        let mut program = Vec::new();
+        while !self.eof() {
+            let decl = self.declaration();
+            program.push(decl);
+        }
+        program
+    }
+
     /// Parse a declaration.
     fn declaration(&mut self) -> ast::Stmt {
         if self.next(&Token::Let) {
@@ -32,7 +41,8 @@ impl Parser {
     /// Parse a function declaration.
     fn function_declaration(&mut self) -> ast::Stmt {
         let tok = self.advance();
-        let name = /*self.eat(&Token::Identifier)*/ Parser::destruct_ident(&tok).expect(format!("Expected identifier got {}", tok).as_str());
+        let name = Parser::destruct_ident(&tok)
+            .unwrap_or_else(|| panic!("Expected identifier got {}", tok));
 
         self.eat(&Token::LParen);
         let mut params: Vec<ast::Parameter> = Vec::new();
@@ -184,14 +194,11 @@ impl Parser {
         };
         self.eat(&Token::RParen);
         let mut body = self.statement();
-        match increment {
-            Some(inc) => match body {
-                ast::Stmt::Block(ref mut stmts) => {
-                    stmts.push(ast::Stmt::Expr(inc))
-                }
-                _ => (),
-            },
-            None => (),
+
+        if let Some(inc) = increment {
+            if let ast::Stmt::Block(ref mut stmts) = body {
+                stmts.push(ast::Stmt::Expr(inc))
+            }
         };
         let condition = match loop_condition {
             Some(expr) => expr,
@@ -199,11 +206,10 @@ impl Parser {
         };
         body = ast::Stmt::While(condition, Box::new(body));
 
-        let new_body = match initializer {
+        match initializer {
             Some(stmt) => ast::Stmt::Block(vec![stmt, body]),
             None => body,
-        };
-        new_body
+        }
     }
     /// Parse an expression statement.
     fn expression_statement(&mut self) -> ast::Stmt {
@@ -219,10 +225,9 @@ impl Parser {
 
     /// Parse an assignment expression.
     fn assignment(&mut self) -> ast::Expr {
-        let mut expr = self.or();
+        let expr = self.or();
 
         if self.next(&Token::Equal) {
-            let equals = self.previous();
             let value = self.assignment();
 
             match expr {

@@ -18,6 +18,12 @@ pub struct Emulator {
     instructions: Vec<String>,
 }
 
+impl Default for Emulator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Emulator {
     pub fn new() -> Self {
         Self {

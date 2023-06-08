@@ -1,10 +1,15 @@
-use axion::add;
 use axion::lexer::Lexer;
+use axion::parser::Parser;
 
-fn main() {
-    let source = "a:integer = 42;";
+fn compile_source(source: &str) {
     let mut lexer = Lexer::new(source);
     let tokens = lexer.lex().unwrap();
-    println!("{:?}", tokens);
-    println!("{}", add(55, 55));
+    let mut parser = Parser::new(tokens);
+    let ast = parser.parse();
+    println!("AST : {:?}", ast);
+}
+
+fn main() {
+    let source = "let a:int = 42;";
+    compile_source(source);
 }
