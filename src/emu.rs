@@ -15,4 +15,37 @@
 pub struct Emulator {
     registers: Vec<u64>,
     mmu: Vec<u8>,
+    instructions: Vec<String>,
+}
+
+impl Emulator {
+    pub fn new() -> Self {
+        Self {
+            registers: Vec::new(),
+            mmu: Vec::new(),
+            instructions: Vec::new(),
+        }
+    }
+
+    pub fn run(&mut self) {}
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn eval_x86() {
+        let instructions = vec![
+            "movq $1, %rax",
+            "addq $2, %rax",
+            "addq $3, %rax",
+            "addq $5, %rax",
+            "movq %rax, %di",
+            "movq $42, (%rax)",
+        ];
+
+        let mut emu = Emulator::new();
+        emu.run();
+    }
 }

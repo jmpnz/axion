@@ -60,9 +60,11 @@ impl SymTable {
 
     // Bind a new symbol.
     pub fn bind(&mut self, name: &str, sym: Symbol) {
-        match self.tables.last() {
+        match self.tables.last_mut() {
             None => self.tables.push(HashMap::new()),
-            Some(tbl) => tbl.try_insert(name.to_string(), sym).unwrap(),
+            Some(tbl) => {
+                tbl.entry(name.to_string()).or_insert(sym);
+            }
         }
     }
 }
