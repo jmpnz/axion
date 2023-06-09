@@ -77,6 +77,12 @@ impl SymTable {
 
 /// `SemanticAnalyzer` implements the `ASTConsumer` trait and runs a semantic
 /// analysis pass on the initial AST created by the `Parser`.
+///
+/// Once the semantic analysis validates the AST it creates a symbol table
+/// with annoted types for existing declarations in the program.§
+///
+/// Type checking is done by resolving the types of the symbols or literals
+/// at the leafs and propagating them to root of the expression.
 pub struct SemanticAnalyzer {
     // AST to process, the AST which represents the program to compile
     // is a vector of declarations.
@@ -119,16 +125,10 @@ impl ast::ASTConsumer<types::DeclType> for SemanticAnalyzer {
     /// to ensure it's a `Boolean` expression.
     fn visit_stmt(&mut self, stmt: &ast::Stmt) -> types::DeclType {
         match stmt {
+            ast::Var(ident, t, value) => {
+
+            }
             _ => todo!(),
         }
     }
 }
-
-/// Type checking pass is handled by the `TypeChecker` struct that implements
-/// the `ASTConsumer` trait. Once the semantic analysis validates the AST it
-/// creates a symbol table with annoted types for existing declarations in the
-/// program.
-/// Type checking is done by walking the AST and propagating the types from
-/// the leaves to the root of the expression.
-#[derive(Debug)]
-pub struct TypeChecker;

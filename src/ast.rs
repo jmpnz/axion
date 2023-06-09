@@ -82,7 +82,7 @@ impl LiteralValue {
     }
 }
 
-/// ASTConsumer trait used to encapsulate AST walking logic.
+/// ASTConsumer trait is used to encapsulate AST walking logic.
 pub trait ASTConsumer<T> {
     /// Visit expressions.
     fn visit_expr(&mut self, expr: &Expr) -> T;
