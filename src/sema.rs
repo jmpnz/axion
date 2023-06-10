@@ -26,6 +26,12 @@ pub struct Symbol {
     scope: Scope,
 }
 
+impl std::fmt::Display for Symbol {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Symbol({}, {}, {:?})", self.name, self.stype, self.scope)
+    }
+}
+
 impl Symbol {
     pub fn new(name: &str, stype: types::DeclType, scope: Scope) -> Self {
         Self {
@@ -101,7 +107,19 @@ impl SymbolTable {
     // Bind a new symbol to the current scope.
     pub fn bind(&mut self, name: &str, sym: Symbol) {
         let mut tbl = &mut self.tables[self.curr_idx];
-        tbl.entry(name.to_string()).or_insert(sym);
+        match tbl.get(name) {
+            Some(value) => {
+                panic!("Name {} is already bound to symbol {}", name, sym)
+            }
+            None => {
+                tbl.insert(name.to_string(), sym);
+            }
+        }
+    }
+
+    // Return the index of the current scope.
+    pub fn scope(&self) -> usize {
+        self.curr_idx
     }
 
     // Entering a new scope pushes a new symbol table into the stack.
@@ -111,6 +129,7 @@ impl SymbolTable {
         self.parent_idx = self.curr_idx;
         self.curr_idx += 1;
     }
+
     // Leave the current scope returning the parent.
     pub fn leave_scope(&mut self) {
         self.curr_idx = self.parent_idx;
@@ -150,12 +169,18 @@ impl SemanticAnalyzer {
         for stmt in &self.ast {
             match stmt {
                 ast::Stmt::Var(name, t, value) => {
-                    self.sym_table
-                        .bind(name, Symbol::new(name, *t, Scope::Local));
+                    let scope = match self.sym_table.scope() {
+                        0 => Scope::Global,
+                        _ => Scope::Local,
+                    };
+                    self.sym_table.bind(name, Symbol::new(name, *t, scope));
                 }
                 ast::Stmt::Function(name, ret, params, body) => {
-                    self.sym_table
-                        .bind(name, Symbol::new(name, *ret, Scope::Global));
+                    let scope = match self.sym_table.scope() {
+                        0 => Scope::Global,
+                        _ => Scope::Local,
+                    };
+                    self.sym_table.bind(name, Symbol::new(name, *ret, scope));
                 }
                 ast::Stmt::Expr(expr) => {
                     self.visit_expr(expr);
