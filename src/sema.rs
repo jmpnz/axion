@@ -8,7 +8,7 @@ use crate::types;
 use std::collections::HashMap;
 
 /// `Scope` defines the scope of a symbol.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Scope {
     Local,
     Global,
@@ -16,7 +16,7 @@ pub enum Scope {
 
 /// `Symbol` represents a symbol in the AST. Symbols include variables
 /// and functions.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Symbol {
     // Symbol name.
     name: String,
@@ -117,6 +117,11 @@ impl SymbolTable {
         }
     }
 
+    // Returns a view of the symbol tables.
+    fn tables(&self) -> &Vec<HashMap<String, Symbol>> {
+        &self.tables
+    }
+
     // Return the index of the current scope.
     pub fn scope(&self) -> usize {
         self.curr_idx
@@ -163,6 +168,11 @@ impl SemanticAnalyzer {
         }
     }
 
+    /// Returns a view the symbol table.
+    pub fn sym_table(&self) -> &Vec<HashMap<String, Symbol>> {
+        &self.sym_table.tables()
+    }
+
     /// Core analysis routine, builds the symbol table and collect semantic
     /// errors to display later.
     fn analyze(&mut self) {
@@ -182,8 +192,8 @@ impl SemanticAnalyzer {
                     };
                     self.sym_table.bind(name, Symbol::new(name, *ret, scope));
                 }
-                ast::Stmt::Expr(expr) => {
-                    self.visit_expr(expr);
+                ast::Stmt::Block(stmts) => {
+                    self.sym_table.enter_scope();
                 }
                 _ => todo!(),
             }
@@ -224,6 +234,31 @@ impl ast::ASTConsumer<types::DeclType> for SemanticAnalyzer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ast;
+    use crate::lexer::Lexer;
+    use crate::parser::Parser;
+    use crate::types::DeclType;
+
+    #[test]
+    fn can_build_symbol_table() {
+        let source = "let i:int = 42;";
+        let mut lexer = Lexer::new(source);
+        let tokens = lexer.lex().unwrap();
+        let mut parser = Parser::new(tokens);
+        let ast = parser.parse();
+        let mut sema = SemanticAnalyzer::new(ast);
+        sema.analyze();
+
+        for tbl in sema.sym_table() {
+            for (name, sym) in tbl {
+                assert_eq!(name, "i");
+                assert_eq!(
+                    sym,
+                    &Symbol::new("i", types::DeclType::Integer, Scope::Global)
+                );
+            }
+        }
+    }
 
     #[test]
     fn symbol_table_bind_and_resolve() {
