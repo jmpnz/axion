@@ -173,6 +173,30 @@ impl SemanticAnalyzer {
         &self.sym_table.tables()
     }
 
+    /// Get the expected scope of a symbol given our index in the symbol
+    /// table stack.
+    fn scope(&self) -> Scope {
+        match self.sym_table.scope() {
+            0 => Scope::Global,
+            _ => Scope::Local,
+        }
+    }
+
+    /// Define a new binding given a declaration.
+    fn define(&mut self, stmt: &ast::Stmt) {
+        match stmt {
+            ast::Stmt::Var(name, t, value) => {
+                let scope = self.scope();
+                self.sym_table.bind(name, Symbol::new(name, *t, scope));
+            }
+            ast::Stmt::Function(name, ret, params, body) => {
+                let scope = self.scope();
+                self.sym_table.bind(name, Symbol::new(name, *ret, scope));
+            }
+            _ => panic!("Expected declaration found statement : {:?}", stmt),
+        }
+    }
+
     /// Core analysis routine, builds the symbol table and collect semantic
     /// errors to display later.
     fn analyze(&mut self) {
