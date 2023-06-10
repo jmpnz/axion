@@ -138,7 +138,9 @@ impl SymbolTable {
     // Leave the current scope returning the parent.
     pub fn leave_scope(&mut self) {
         self.curr_idx = self.parent_idx;
-        self.parent_idx = self.parent_idx - 1;
+        if self.parent_idx > 0 {
+            self.parent_idx = self.parent_idx - 1;
+        }
     }
 }
 
@@ -153,7 +155,7 @@ impl SymbolTable {
 pub struct SemanticAnalyzer {
     // AST to process, the AST which represents the program to compile
     // is a vector of declarations.
-    ast: Vec<ast::Stmt>,
+    // ast: Vec<ast::Stmt>,
     // Symbol table created during semantic analysis, it collects all
     // the existing symbols (variables and functions), their types
     // and their scopes.
@@ -161,9 +163,8 @@ pub struct SemanticAnalyzer {
 }
 
 impl SemanticAnalyzer {
-    pub fn new(ast: Vec<ast::Stmt>) -> Self {
+    pub fn new() -> Self {
         Self {
-            ast,
             sym_table: SymbolTable::new(),
         }
     }
@@ -189,36 +190,74 @@ impl SemanticAnalyzer {
                 let scope = self.scope();
                 self.sym_table.bind(name, Symbol::new(name, *t, scope));
             }
-            ast::Stmt::Function(name, ret, params, body) => {
+            // TODO: bind the return type or compound type
+            ast::Stmt::Function(name, t, params, body) => {
                 let scope = self.scope();
-                self.sym_table.bind(name, Symbol::new(name, *ret, scope));
+                self.sym_table.bind(
+                    name,
+                    Symbol::new(name, types::DeclType::Function, scope),
+                );
             }
             _ => panic!("Expected declaration found statement : {:?}", stmt),
         }
     }
 
+    /// Resolve an expression to check if it was properly defined.
+    fn resolve(&self, expr: &ast::Expr) {
+        match expr {
+            // Check if the variable expression was properly bound.
+            ast::Expr::Unary(_, rhs) => self.resolve(rhs),
+            ast::Expr::Binary(_, lhs, rhs) => {
+                self.resolve(lhs);
+                self.resolve(rhs);
+            }
+            ast::Expr::Logical(_, lhs, rhs) => {
+                self.resolve(lhs);
+                self.resolve(rhs);
+            }
+            ast::Expr::Assign(name, rhs) => {
+                // Check if the assignee is properly defined
+                if let Some(_) = self.sym_table.resolve(name) {
+                    // Assignee is properly defined try and resolve the rhs.
+                    self.resolve(rhs);
+                }
+                // If it's unknown fail.
+                panic!("Unknown variable assignment at {name}");
+            }
+            ast::Expr::Var(name) => match self.sym_table.resolve(name) {
+                Some(_) => (),
+                None => panic!("Unkown variable {name}"),
+            },
+            ast::Expr::Grouping(group) => {
+                self.resolve(group);
+            }
+            _ => panic!("Trying to call a non function!"),
+        }
+    }
+
     /// Core analysis routine, builds the symbol table and collect semantic
     /// errors to display later.
-    fn analyze(&mut self) {
-        for stmt in &self.ast {
+    fn analyze(&mut self, ast: &Vec<ast::Stmt>) {
+        for stmt in ast {
             match stmt {
-                ast::Stmt::Var(name, t, value) => {
-                    let scope = match self.sym_table.scope() {
-                        0 => Scope::Global,
-                        _ => Scope::Local,
-                    };
-                    self.sym_table.bind(name, Symbol::new(name, *t, scope));
-                }
-                ast::Stmt::Function(name, ret, params, body) => {
-                    let scope = match self.sym_table.scope() {
-                        0 => Scope::Global,
-                        _ => Scope::Local,
-                    };
-                    self.sym_table.bind(name, Symbol::new(name, *ret, scope));
+                ast::Stmt::Var(..) => self.define(stmt),
+                ast::Stmt::Function(_, _, _, ref body) => {
+                    self.define(stmt);
+                    match **body {
+                        ast::Stmt::Block(ref stmts) => {
+                            self.sym_table.enter_scope();
+                            self.analyze(stmts);
+                            self.sym_table.leave_scope();
+                        }
+                        _ => panic!("Expected block found {:?}", body),
+                    }
                 }
                 ast::Stmt::Block(stmts) => {
                     self.sym_table.enter_scope();
+                    self.analyze(stmts);
+                    self.sym_table.leave_scope();
                 }
+                ast::Stmt::Expr(expr) => self.resolve(expr),
                 _ => todo!(),
             }
         }
@@ -270,8 +309,8 @@ mod tests {
         let tokens = lexer.lex().unwrap();
         let mut parser = Parser::new(tokens);
         let ast = parser.parse();
-        let mut sema = SemanticAnalyzer::new(ast);
-        sema.analyze();
+        let mut sema = SemanticAnalyzer::new();
+        sema.analyze(&ast);
 
         for tbl in sema.sym_table() {
             for (name, sym) in tbl {
@@ -280,6 +319,60 @@ mod tests {
                     sym,
                     &Symbol::new("i", types::DeclType::Integer, Scope::Global)
                 );
+            }
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    fn fail_to_build_symbol_table_when_undefined() {
+        let source = "let i:int = 42;\n i = a;";
+        let mut lexer = Lexer::new(source);
+        let tokens = lexer.lex().unwrap();
+        let mut parser = Parser::new(tokens);
+        let ast = parser.parse();
+        let mut sema = SemanticAnalyzer::new();
+        sema.analyze(&ast);
+
+        for tbl in sema.sym_table() {
+            for (name, sym) in tbl {
+                assert_eq!(name, "i");
+                assert_eq!(
+                    sym,
+                    &Symbol::new("i", types::DeclType::Integer, Scope::Global)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn can_build_symbol_table_with_scopes() {
+        let source = r#"
+        let i:int = 42;
+        function die(a:int) -> void {
+            {
+                let a : int = 0;
+                let b : int = 1;
+                let c : boolean = true;
+                let d : boolean = c;
+
+                {
+                    let e : int = a + b;
+                }
+            }
+
+        }
+        "#;
+        let mut lexer = Lexer::new(source);
+        let tokens = lexer.lex().unwrap();
+        let mut parser = Parser::new(tokens);
+        let ast = parser.parse();
+        let mut sema = SemanticAnalyzer::new();
+        sema.analyze(&ast);
+
+        for tbl in sema.sym_table() {
+            for (name, sym) in tbl {
+                println!("Name : {} Symbol : {}", name, sym);
             }
         }
     }
