@@ -1,6 +1,7 @@
 //! Semantic analyzer responsible for doing semantic analysis, type checking
 //! and rewriting the AST to include type annotations for the next step.
 use crate::ast;
+use crate::ast::ASTConsumer;
 use crate::token::Token;
 use crate::types;
 
@@ -148,9 +149,14 @@ impl SemanticAnalyzer {
     fn analyze(&mut self) {
         for stmt in &self.ast {
             match stmt {
-                ast::Stmt::Var(name, t, value) => { /* add to symbol table*/ }
+                ast::Stmt::Var(name, t, value) => {
+                    self.sym_table.bind(name, Symbol::new(name, *t, Scope::Local));
+                }
                 ast::Stmt::Function(name, ret, params, body) => {
-                    /* add to symbol table */
+                    self.sym_table.bind(name, Symbol::new(name, *ret, Scope::Global));
+                }
+                ast::Stmt::Expr(expr) => {
+                    self.visit_expr(expr);
                 }
                 _ => todo!(),
             }
@@ -161,14 +167,15 @@ impl SemanticAnalyzer {
 /// Implementation of the `ASTConsumer` trait for `SemanticAnalyzer`
 impl ast::ASTConsumer<types::DeclType> for SemanticAnalyzer {
     /// When we visit an expression we try to infer it's type based on a few
-    /// heuristics.
+    /// heuristics, during type checking we try and resolve the declarations
+    /// referenced in the expression, if resolution fails we throw an error.
     /// 1. If the expression is an assignment or variable we resolve it from
     /// the symbol table and gets it's declaration type.
     /// 2. If the expression is a literal we use the `typeof` function to get
     /// its type.
     /// 3. If the expression we visit is a logical, unary or binary operation
     /// we resolve the types of the leaves and propagate them back.
-    fn visit_expr(&mut self, expr: &ast::Expr) -> types::DeclType {
+    fn visit_expr(&self, expr: &ast::Expr) -> types::DeclType {
         match expr {
             ast::Expr::Literal(v) => v.get_type(),
             _ => todo!(),
@@ -179,7 +186,7 @@ impl ast::ASTConsumer<types::DeclType> for SemanticAnalyzer {
     /// encapsulated within the statement.
     /// For example visiting an `Stmt::If` will type check the conditional
     /// to ensure it's a `Boolean` expression.
-    fn visit_stmt(&mut self, stmt: &ast::Stmt) -> types::DeclType {
+    fn visit_stmt(&self, stmt: &ast::Stmt) -> types::DeclType {
         match stmt {
             ast::Stmt::Var(ident, t, value) => *t,
             _ => todo!(),
