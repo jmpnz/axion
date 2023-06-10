@@ -78,7 +78,7 @@ impl SymbolTable {
         // Get a reference to the current scope we're processing
         let mut current_scope_table = &self.tables[self.curr_idx];
         let mut idx = self.curr_idx;
-        while idx >= 0 {
+        loop {
             // Try and find the declaration in the current scope.
             for (ident, symbol) in current_scope_table {
                 if ident == name {
@@ -87,8 +87,12 @@ impl SymbolTable {
             }
             // If we didn't find the declaration in the current scope
             // we check the parent.
-            idx -= 1;
-            current_scope_table = &self.tables[idx];
+            if let Some(_) = idx.checked_sub(1) {
+                idx -= 1;
+                current_scope_table = &self.tables[idx];
+            } else {
+                break;
+            }
         }
         None
     }
@@ -229,6 +233,28 @@ mod tests {
         }
 
         for sym in &symbols {
+            let symbol = sym_table.resolve(sym.name());
+            assert!(!symbol.is_none());
+        }
+    }
+
+    #[test]
+    fn symbol_table_bind_and_resolve_with_outer_scope() {
+        let mut sym_table = SymbolTable::new();
+        let symbols = vec![
+            Symbol::new("a", types::DeclType::Integer, Scope::Global),
+            Symbol::new("b", types::DeclType::String, Scope::Local),
+            Symbol::new("c", types::DeclType::Boolean, Scope::Local),
+            Symbol::new("d", types::DeclType::Integer, Scope::Local),
+            Symbol::new("e", types::DeclType::Integer, Scope::Local),
+        ];
+
+        for sym in &symbols {
+            sym_table.bind(sym.name(), sym.clone());
+            sym_table.enter_scope();
+        }
+
+        for sym in symbols.iter().rev() {
             let symbol = sym_table.resolve(sym.name());
             assert!(!symbol.is_none());
         }
