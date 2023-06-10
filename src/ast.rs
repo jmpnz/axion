@@ -15,7 +15,7 @@ pub enum Stmt {
     Var(String, types::DeclType, Option<Expr>),
     // Function declarations associate an identifier with a return type, args
     // and a body.
-    Function(String, types::DeclType, Vec<Parameter>, Box<Stmt>),
+    Function(String, types::DeclType, Vec<Parameter>, Vec<Stmt>),
     // Expression statement are statements that induce side effects.
     Expr(Expr),
     // Return statements are statements that return expressions.

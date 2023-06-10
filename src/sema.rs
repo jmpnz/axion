@@ -243,14 +243,9 @@ impl SemanticAnalyzer {
                 ast::Stmt::Var(..) => self.define(stmt),
                 ast::Stmt::Function(_, _, _, ref body) => {
                     self.define(stmt);
-                    match **body {
-                        ast::Stmt::Block(ref stmts) => {
-                            self.sym_table.enter_scope();
-                            self.analyze(stmts);
-                            self.sym_table.leave_scope();
-                        }
-                        _ => panic!("Expected block found {:?}", body),
-                    }
+                    self.sym_table.enter_scope();
+                    self.analyze(body);
+                    self.sym_table.leave_scope();
                 }
                 ast::Stmt::Block(stmts) => {
                     self.sym_table.enter_scope();
