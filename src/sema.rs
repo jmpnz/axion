@@ -205,6 +205,8 @@ impl SemanticAnalyzer {
     /// Resolve an expression to check if it was properly defined.
     fn resolve(&self, expr: &ast::Expr) {
         match expr {
+            // Nothing to do for literals
+            ast::Expr::Literal(_) => (),
             // Check if the variable expression was properly bound.
             ast::Expr::Unary(_, rhs) => self.resolve(rhs),
             ast::Expr::Binary(_, lhs, rhs) => {
@@ -230,7 +232,13 @@ impl SemanticAnalyzer {
             },
             ast::Expr::Grouping(group) => {
                 self.resolve(group);
-            }
+            },
+            ast::Expr::Call(callee, args) => {
+                self.resolve(callee);
+                for arg in args {
+                    self.resolve(arg);
+                }
+            },
             _ => panic!("Trying to call a non function!"),
         }
     }
@@ -264,7 +272,11 @@ impl SemanticAnalyzer {
                     None => (),
                     Some(branch) => self.analyze(&branch),
                 }
-            }
+            },
+            ast::Stmt::While(expr, body) => {
+                self.resolve(&expr);
+                self.analyze(&body);
+            },
             _ => todo!(),
         }
     }
@@ -375,6 +387,41 @@ mod tests {
             }
 
         }
+        "#;
+        let mut lexer = Lexer::new(source);
+        let tokens = lexer.lex().unwrap();
+        let mut parser = Parser::new(tokens);
+        let ast = parser.parse();
+        let mut sema = SemanticAnalyzer::new();
+        sema.run(&ast);
+
+        for tbl in sema.sym_table() {
+            for (name, sym) in tbl {
+                println!("Name : {} Symbol : {}", name, sym);
+            }
+        }
+    }
+
+    #[test]
+    fn can_build_symbol_table_for_all_expr() {
+        let source = r#"
+        let i:int = 42;
+        function die(a:int) -> void {
+            {
+                let a : int = 0;
+                let b : int = 1;
+                let c : boolean = true;
+                let d : boolean = c;
+
+                {
+                    let e : int = a + b;
+                    let a : boolean = !c;
+                    let d : boolean = c && a;
+                }
+            }
+
+        }
+        die(100);
         "#;
         let mut lexer = Lexer::new(source);
         let tokens = lexer.lex().unwrap();
