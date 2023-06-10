@@ -40,38 +40,76 @@ impl Symbol {
     }
 }
 
-/// `SymTable` represents a stack of symbol tables, the idea is that within
-/// each scope we push a new symbol table to the stack and all declarations
-/// within this scope end up there. Once we leave the scope we restore the
-/// stack pointer to the previous scope.
-pub struct SymTable {
+/// `SymbolTable` represents a stack of symbol tables, the global scope
+/// sits at `root_idx` and is always the 0th entry. Each time we enter
+/// a new scope (scopes are enclosed within `ast::Stmt::Block`) we push
+/// a new symbol table into the stack and all declarations within the
+/// scope end up in the most recent symbol table.
+pub struct SymbolTable {
+    // Root index in the stack represents the global scope, the root index
+    // is immutable.
+    root_idx: usize,
+    // Current index in the stack represents the current scope.
+    curr_idx: usize,
+    // Parent index represents the index of the parent scope of the scope
+    parent_idx: usize,
+    // pointed at by `curr_idx`.
     tables: Vec<HashMap<String, Symbol>>,
 }
 
-impl Default for SymTable {
+impl Default for SymbolTable {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl SymTable {
+impl SymbolTable {
     pub fn new() -> Self {
-        Self { tables: Vec::new() }
+        Self {
+            root_idx: 0,
+            curr_idx: 0,
+            parent_idx: 0,
+            tables: vec![HashMap::new()],
+        }
     }
 
     // Resolve a new symbol.
     pub fn resolve(&self, name: &str) -> Option<Symbol> {
+        // Get a reference to the current scope we're processing
+        let mut current_scope_table = &self.tables[self.curr_idx];
+        let mut idx = self.curr_idx;
+        while idx >= 0 {
+            // Try and find the declaration in the current scope.
+            for (ident, symbol) in current_scope_table {
+                if ident == name {
+                    return Some(symbol.clone());
+                }
+            }
+            // If we didn't find the declaration in the current scope
+            // we check the parent.
+            idx -= 1;
+            current_scope_table = &self.tables[idx];
+        }
         None
     }
 
-    // Bind a new symbol.
+    // Bind a new symbol to the current scope.
     pub fn bind(&mut self, name: &str, sym: Symbol) {
-        match self.tables.last_mut() {
-            None => self.tables.push(HashMap::new()),
-            Some(tbl) => {
-                tbl.entry(name.to_string()).or_insert(sym);
-            }
-        }
+        let mut tbl = &mut self.tables[self.curr_idx];
+        tbl.entry(name.to_string()).or_insert(sym);
+    }
+
+    // Entering a new scope pushes a new symbol table into the stack.
+    pub fn enter_scope(&mut self) {
+        let table = HashMap::new();
+        self.tables.push(table);
+        self.parent_idx = self.curr_idx;
+        self.curr_idx += 1;
+    }
+    // Leave the current scope returning the parent.
+    pub fn leave_scope(&mut self) {
+        self.curr_idx = self.parent_idx;
+        self.parent_idx = self.parent_idx - 1;
     }
 }
 
@@ -90,14 +128,28 @@ pub struct SemanticAnalyzer {
     // Symbol table created during semantic analysis, it collects all
     // the existing symbols (variables and functions), their types
     // and their scopes.
-    sym_table: SymTable,
+    sym_table: SymbolTable,
 }
 
 impl SemanticAnalyzer {
     pub fn new(ast: Vec<ast::Stmt>) -> Self {
         Self {
             ast,
-            sym_table: SymTable::new(),
+            sym_table: SymbolTable::new(),
+        }
+    }
+
+    /// Core analysis routine, builds the symbol table and collect semantic
+    /// errors to display later.
+    fn analyze(&mut self) {
+        for stmt in &self.ast {
+            match stmt {
+                ast::Stmt::Var(name, t, value) => { /* add to symbol table*/ }
+                ast::Stmt::Function(name, ret, params, body) => {
+                    /* add to symbol table */
+                }
+                _ => todo!(),
+            }
         }
     }
 }
@@ -125,10 +177,60 @@ impl ast::ASTConsumer<types::DeclType> for SemanticAnalyzer {
     /// to ensure it's a `Boolean` expression.
     fn visit_stmt(&mut self, stmt: &ast::Stmt) -> types::DeclType {
         match stmt {
-            ast::Var(ident, t, value) => {
-
-            }
+            ast::Stmt::Var(ident, t, value) => *t,
             _ => todo!(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn symbol_table_bind_and_resolve() {
+        let mut sym_table = SymbolTable::new();
+        let symbols = vec![
+            Symbol::new("a", types::DeclType::Integer, Scope::Global),
+            Symbol::new("b", types::DeclType::String, Scope::Global),
+            Symbol::new("c", types::DeclType::Boolean, Scope::Local),
+            Symbol::new("d", types::DeclType::Integer, Scope::Local),
+            Symbol::new("e", types::DeclType::Integer, Scope::Local),
+        ];
+
+        for sym in &symbols[..2] {
+            sym_table.bind(sym.name(), sym.clone())
+        }
+        sym_table.enter_scope();
+        for sym in &symbols[2..] {
+            sym_table.bind(sym.name(), sym.clone())
+        }
+
+        for sym in &symbols {
+            let symbol = sym_table.resolve(sym.name());
+            assert!(!symbol.is_none());
+        }
+    }
+
+    #[test]
+    fn symbol_table_bind_and_resolve_with_nested_scopes() {
+        let mut sym_table = SymbolTable::new();
+        let symbols = vec![
+            Symbol::new("a", types::DeclType::Integer, Scope::Global),
+            Symbol::new("b", types::DeclType::String, Scope::Local),
+            Symbol::new("c", types::DeclType::Boolean, Scope::Local),
+            Symbol::new("d", types::DeclType::Integer, Scope::Local),
+            Symbol::new("e", types::DeclType::Integer, Scope::Local),
+        ];
+
+        for sym in &symbols {
+            sym_table.bind(sym.name(), sym.clone());
+            sym_table.enter_scope();
+        }
+
+        for sym in &symbols {
+            let symbol = sym_table.resolve(sym.name());
+            assert!(!symbol.is_none());
         }
     }
 }
