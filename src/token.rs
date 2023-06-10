@@ -52,6 +52,7 @@ pub enum Token {
     Boolean,
     Char,
     Array,
+    Void,
     If,
     Else,
     For,
@@ -103,6 +104,7 @@ impl std::fmt::Display for Token {
             Self::String => write!(f, "STRING"),
             Self::Boolean => write!(f, "BOOLEAN"),
             Self::Char => write!(f, "CHAR"),
+            Self::Void => write!(f, "VOID"),
             Self::Array => write!(f, "ARRAY"),
             Self::If => write!(f, "IF"),
             Self::Else => write!(f, "ELSE"),
@@ -139,6 +141,7 @@ pub fn is_keyword(ident: &str) -> Option<Token> {
         "string" => Some(Token::String),
         "true" => Some(Token::True),
         "while" => Some(Token::While),
+        "void" => Some(Token::Void),
         _ => None,
     }
 }
@@ -171,6 +174,7 @@ mod tests {
         assert_eq!(is_keyword("while"), Some(Token::While));
         assert_eq!(is_keyword("let"), Some(Token::Let));
         assert_eq!(is_keyword("const"), Some(Token::Const));
+        assert_eq!(is_keyword("void"), Some(Token::Void));
 
         assert_eq!(is_keyword("var"), None);
         assert_eq!(is_keyword("square"), None);

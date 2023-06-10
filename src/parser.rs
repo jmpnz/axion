@@ -56,7 +56,7 @@ impl Parser {
                     Token::String => DeclType::String,
                     Token::Char => DeclType::Char,
                     Token::Boolean => DeclType::Boolean,
-                    _ => panic!("Unknown declaration type"),
+                    _ => panic!("Unknown declaration type {}", self.previous()),
                 };
                 let param = ast::Parameter(ident, t);
                 params.push(param);
@@ -72,7 +72,8 @@ impl Parser {
             Token::String => DeclType::String,
             Token::Char => DeclType::Char,
             Token::Boolean => DeclType::Boolean,
-            _ => panic!("Unknown declaration type"),
+            Token::Void => DeclType::Void,
+            _ => panic!("Unknown declaration type {}", self.previous()),
         };
 
         self.eat(&Token::LBrace);
@@ -744,6 +745,23 @@ mod tests {
             Box::new(ast::Stmt::Block(vec![ast::Stmt::Return(
                 ast::Expr::Var("i".to_string())
             ),])),
+        )
+    );
+
+    test_statement_parser!(
+        function_declaration_void_return_type,
+        r#"
+        function sum100(i : int) -> void {
+        }
+        "#,
+        ast::Stmt::Function(
+            "sum100".to_string(),
+            DeclType::Void,
+            vec![ast::Parameter(
+                Token::Identifier("i".to_string()),
+                DeclType::Integer
+            )],
+            Box::new(ast::Stmt::Block(vec![])),
         )
     );
 }

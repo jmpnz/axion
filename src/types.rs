@@ -18,6 +18,8 @@ pub enum DeclType {
     Array,
     // Function type is a type to represent functions.
     Function,
+    // Void type is used for functions that don't return a value.
+    Void,
 }
 
 impl std::fmt::Display for DeclType {
@@ -29,6 +31,7 @@ impl std::fmt::Display for DeclType {
             Self::Boolean => write!(f, "Type::Boolean"),
             Self::Array => write!(f, "Type::Array"),
             Self::Function => write!(f, "Type::Function"),
+            Self::Void => write!(f, "Type::Void"),
         }
     }
 }

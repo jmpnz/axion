@@ -150,10 +150,12 @@ impl SemanticAnalyzer {
         for stmt in &self.ast {
             match stmt {
                 ast::Stmt::Var(name, t, value) => {
-                    self.sym_table.bind(name, Symbol::new(name, *t, Scope::Local));
+                    self.sym_table
+                        .bind(name, Symbol::new(name, *t, Scope::Local));
                 }
                 ast::Stmt::Function(name, ret, params, body) => {
-                    self.sym_table.bind(name, Symbol::new(name, *ret, Scope::Global));
+                    self.sym_table
+                        .bind(name, Symbol::new(name, *ret, Scope::Global));
                 }
                 ast::Stmt::Expr(expr) => {
                     self.visit_expr(expr);
