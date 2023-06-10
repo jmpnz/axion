@@ -237,24 +237,42 @@ impl SemanticAnalyzer {
 
     /// Core analysis routine, builds the symbol table and collect semantic
     /// errors to display later.
-    fn analyze(&mut self, ast: &Vec<ast::Stmt>) {
-        for stmt in ast {
-            match stmt {
-                ast::Stmt::Var(..) => self.define(stmt),
-                ast::Stmt::Function(_, _, _, ref body) => {
-                    self.define(stmt);
-                    self.sym_table.enter_scope();
-                    self.analyze(body);
-                    self.sym_table.leave_scope();
+    fn analyze(&mut self, stmt: &ast::Stmt) {
+        match stmt {
+            ast::Stmt::Var(..) => self.define(stmt),
+            ast::Stmt::Function(_, _, _, ref body) => {
+                self.define(stmt);
+                self.sym_table.enter_scope();
+                for stmt in body {
+                    self.analyze(&stmt);
                 }
-                ast::Stmt::Block(stmts) => {
-                    self.sym_table.enter_scope();
-                    self.analyze(stmts);
-                    self.sym_table.leave_scope();
-                }
-                ast::Stmt::Expr(expr) => self.resolve(expr),
-                _ => todo!(),
+                self.sym_table.leave_scope();
             }
+            ast::Stmt::Block(stmts) => {
+                self.sym_table.enter_scope();
+                for stmt in stmts {
+                    self.analyze(&stmt);
+                }
+                self.sym_table.leave_scope();
+            }
+            ast::Stmt::Expr(expr) => self.resolve(&expr),
+            ast::Stmt::Return(expr) => self.resolve(&expr),
+            ast::Stmt::If(expr, thenBranch, condBranch) => {
+                self.resolve(&expr);
+                self.analyze(&thenBranch);
+                match condBranch {
+                    None => (),
+                    Some(branch) => self.analyze(&branch),
+                }
+            }
+            _ => todo!(),
+        }
+    }
+
+    /// Run semantic analysis pass on the given AST.
+    pub fn run(&mut self, ast: &Vec<ast::Stmt>) {
+        for stmt in ast {
+            self.analyze(stmt);
         }
     }
 }
@@ -305,7 +323,7 @@ mod tests {
         let mut parser = Parser::new(tokens);
         let ast = parser.parse();
         let mut sema = SemanticAnalyzer::new();
-        sema.analyze(&ast);
+        sema.run(&ast);
 
         for tbl in sema.sym_table() {
             for (name, sym) in tbl {
@@ -327,7 +345,7 @@ mod tests {
         let mut parser = Parser::new(tokens);
         let ast = parser.parse();
         let mut sema = SemanticAnalyzer::new();
-        sema.analyze(&ast);
+        sema.run(&ast);
 
         for tbl in sema.sym_table() {
             for (name, sym) in tbl {
@@ -363,7 +381,7 @@ mod tests {
         let mut parser = Parser::new(tokens);
         let ast = parser.parse();
         let mut sema = SemanticAnalyzer::new();
-        sema.analyze(&ast);
+        sema.run(&ast);
 
         for tbl in sema.sym_table() {
             for (name, sym) in tbl {

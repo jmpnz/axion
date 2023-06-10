@@ -79,7 +79,7 @@ impl Parser {
         self.eat(&Token::LBrace);
         let block = self.block();
         if let ast::Stmt::Block(stmts) = block {
-           return  ast::Stmt::Function(name, ret_type, params, stmts);
+            return ast::Stmt::Function(name, ret_type, params, stmts);
         } else {
             panic!("Expected block after function declarations");
         }
@@ -746,9 +746,7 @@ mod tests {
                 Token::Identifier("i".to_string()),
                 DeclType::Integer
             )],
-            vec![ast::Stmt::Return(
-                ast::Expr::Var("i".to_string())
-            ),],
+            vec![ast::Stmt::Return(ast::Expr::Var("i".to_string())),],
         )
     );
 
