@@ -239,7 +239,7 @@ mod tests {
     }
 
     #[test]
-    fn symbol_table_bind_and_resolve_with_outer_scope() {
+    fn symbol_table_bind_and_resolve_from_inner_scope() {
         let mut sym_table = SymbolTable::new();
         let symbols = vec![
             Symbol::new("a", types::DeclType::Integer, Scope::Global),
