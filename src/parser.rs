@@ -48,7 +48,10 @@ impl Parser {
         let mut params: Vec<ast::Parameter> = Vec::new();
         if !self.next(&Token::RParen) {
             loop {
-                let ident = self.advance();
+                let ident = match self.advance() {
+                    Token::Identifier(name) => name,
+                    _ => panic!("Expected identifier"),
+                };
                 self.eat(&Token::Colon);
 
                 let t = match self.advance() {
@@ -744,10 +747,7 @@ mod tests {
         ast::Stmt::Function(
             "sum100".to_string(),
             DeclType::Integer,
-            vec![ast::Parameter(
-                Token::Identifier("i".to_string()),
-                DeclType::Integer
-            )],
+            vec![ast::Parameter("i".to_string(), DeclType::Integer)],
             vec![ast::Stmt::Return(ast::Expr::Var("i".to_string())),],
         )
     );
@@ -761,10 +761,7 @@ mod tests {
         ast::Stmt::Function(
             "sum100".to_string(),
             DeclType::Void,
-            vec![ast::Parameter(
-                Token::Identifier("i".to_string()),
-                DeclType::Integer
-            )],
+            vec![ast::Parameter("i".to_string(), DeclType::Integer)],
             vec![],
         )
     );

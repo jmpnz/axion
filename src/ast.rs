@@ -4,7 +4,7 @@ use crate::types;
 
 /// Function parameters are identifiers with a type.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Parameter(pub token::Token, pub types::DeclType);
+pub struct Parameter(pub String, pub types::DeclType);
 
 /// Statements in axion are no different than statements in C or JavaScript
 /// they include the usual control flow statements and declarartions.
