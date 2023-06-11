@@ -42,7 +42,7 @@ mod tests {
 
     #[test]
     fn eval_x86() {
-        let instructions = vec![
+        let _instructions = vec![
             "movq $1, %rax",
             "addq $2, %rax",
             "addq $3, %rax",

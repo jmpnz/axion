@@ -41,8 +41,8 @@ impl Parser {
     /// Parse a function declaration.
     fn function_declaration(&mut self) -> ast::Stmt {
         let tok = self.advance();
-        let name = Parser::destruct_ident(&tok)
-            .unwrap_or_else(|| panic!("Expected identifier got {}", tok));
+        let name = Self::destruct_ident(&tok)
+            .unwrap_or_else(|| panic!("Expected identifier got {tok}"));
 
         self.eat(&Token::LParen);
         let mut params: Vec<ast::Parameter> = Vec::new();
@@ -79,7 +79,7 @@ impl Parser {
         self.eat(&Token::LBrace);
         let block = self.block();
         if let ast::Stmt::Block(stmts) = block {
-            return ast::Stmt::Function(name, ret_type, params, stmts);
+            ast::Stmt::Function(name, ret_type, params, stmts)
         } else {
             panic!("Expected block after function declarations");
         }
@@ -162,10 +162,12 @@ impl Parser {
         self.eat(&Token::RParen);
 
         let then_branch = Box::new(self.statement());
-        let mut else_branch = None;
-        if self.next(&Token::Else) {
-            else_branch = Some(Box::new(self.statement()));
-        }
+
+        let else_branch = if self.next(&Token::Else) {
+            Some(Box::new(self.statement()))
+        } else {
+            None
+        };
         ast::Stmt::If(condition, then_branch, else_branch)
     }
 
@@ -186,29 +188,29 @@ impl Parser {
             Token::Let => Some(self.var_declaration()),
             _ => Some(self.expression_statement()),
         };
-        let loop_condition = if !self.check(&Token::Semicolon) {
-            Some(self.expression())
-        } else {
+        let loop_condition = if self.check(&Token::Semicolon) {
             None
+        } else {
+            Some(self.expression())
         };
         self.eat(&Token::Semicolon);
-        let increment = if !self.check(&Token::RParen) {
-            Some(self.expression())
-        } else {
+        let increment = if self.check(&Token::RParen) {
             None
+        } else {
+            Some(self.expression())
         };
         self.eat(&Token::RParen);
         let mut body = self.statement();
 
         if let Some(inc) = increment {
             if let ast::Stmt::Block(ref mut stmts) = body {
-                stmts.push(ast::Stmt::Expr(inc))
+                stmts.push(ast::Stmt::Expr(inc));
             }
         };
-        let condition = match loop_condition {
-            Some(expr) => expr,
-            None => ast::Expr::Literal(ast::LiteralValue::Boolean(true)),
-        };
+        let condition = loop_condition.map_or_else(
+            || ast::Expr::Literal(ast::LiteralValue::Boolean(true)),
+            |expr| expr,
+        );
         body = ast::Stmt::While(condition, Box::new(body));
 
         match initializer {

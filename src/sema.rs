@@ -1,8 +1,7 @@
 //! Semantic analyzer responsible for doing semantic analysis, type checking
 //! and rewriting the AST to include type annotations for the next step.
 use crate::ast;
-use crate::ast::ASTConsumer;
-use crate::token::Token;
+
 use crate::types;
 
 use std::collections::HashMap;
@@ -21,22 +20,25 @@ pub struct Symbol {
     // Symbol name.
     name: String,
     // Symbol type.
-    stype: types::DeclType,
+    t: types::DeclType,
+    // Optional return type for functions.
+    ret: Option<types::DeclType>,
     // Symbol scope.
     scope: Scope,
 }
 
 impl std::fmt::Display for Symbol {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Symbol({}, {}, {:?})", self.name, self.stype, self.scope)
+        write!(f, "Symbol({}, {}, {:?})", self.name, self.t, self.scope)
     }
 }
 
 impl Symbol {
-    pub fn new(name: &str, stype: types::DeclType, scope: Scope) -> Self {
+    pub fn new(name: &str, t: types::DeclType, scope: Scope) -> Self {
         Self {
             name: name.to_string(),
-            stype,
+            t,
+            ret: None,
             scope,
         }
     }
@@ -80,11 +82,11 @@ impl SymbolTable {
         }
     }
 
-    // Resolve a new symbol.
-    pub fn resolve(&self, name: &str) -> Option<Symbol> {
-        // Get a reference to the current scope we're processing
-        let mut current_scope_table = &self.tables[self.curr_idx];
-        let mut idx = self.curr_idx;
+    // Check if a symbol exists in the symbol table.
+    fn exists(&self, name: &str) -> Option<Symbol> {
+        // Get a reference to the last table in the stack.
+        let mut idx = self.tables.len() - 1;
+        let mut current_scope_table = &self.tables[idx];
         loop {
             // Try and find the declaration in the current scope.
             for (ident, symbol) in current_scope_table {
@@ -94,7 +96,31 @@ impl SymbolTable {
             }
             // If we didn't find the declaration in the current scope
             // we check the parent.
-            if let Some(_) = idx.checked_sub(1) {
+            if idx.checked_sub(1).is_some() {
+                idx -= 1;
+                current_scope_table = &self.tables[idx];
+            } else {
+                break;
+            }
+        }
+        None
+    }
+
+    // Resolve a new symbol.
+    pub fn resolve(&self, name: &str) -> Option<Symbol> {
+        // Get a reference to the current scope we're processing
+        let mut idx = self.curr_idx;
+        let mut current_scope_table = &self.tables[idx];
+        loop {
+            // Try and find the declaration in the current scope.
+            for (ident, symbol) in current_scope_table {
+                if ident == name {
+                    return Some(symbol.clone());
+                }
+            }
+            // If we didn't find the declaration in the current scope
+            // we check the parent.
+            if idx.checked_sub(1).is_some() {
                 idx -= 1;
                 current_scope_table = &self.tables[idx];
             } else {
@@ -106,10 +132,10 @@ impl SymbolTable {
 
     // Bind a new symbol to the current scope.
     pub fn bind(&mut self, name: &str, sym: Symbol) {
-        let mut tbl = &mut self.tables[self.curr_idx];
+        let tbl = &mut self.tables[self.curr_idx];
         match tbl.get(name) {
-            Some(value) => {
-                panic!("Name {} is already bound to symbol {}", name, sym)
+            Some(_value) => {
+                panic!("Name {name} is already bound to symbol {sym}")
             }
             None => {
                 tbl.insert(name.to_string(), sym);
@@ -118,12 +144,12 @@ impl SymbolTable {
     }
 
     // Returns a view of the symbol tables.
-    fn tables(&self) -> &Vec<HashMap<String, Symbol>> {
+    const fn tables(&self) -> &Vec<HashMap<String, Symbol>> {
         &self.tables
     }
 
     // Return the index of the current scope.
-    pub fn scope(&self) -> usize {
+    pub const fn scope(&self) -> usize {
         self.curr_idx
     }
 
@@ -139,7 +165,7 @@ impl SymbolTable {
     pub fn leave_scope(&mut self) {
         self.curr_idx = self.parent_idx;
         if self.parent_idx > 0 {
-            self.parent_idx = self.parent_idx - 1;
+            self.parent_idx -= 1;
         }
     }
 }
@@ -159,7 +185,13 @@ pub struct SemanticAnalyzer {
     // Symbol table created during semantic analysis, it collects all
     // the existing symbols (variables and functions), their types
     // and their scopes.
-    sym_table: SymbolTable,
+    pub sym_table: SymbolTable,
+}
+
+impl Default for SemanticAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SemanticAnalyzer {
@@ -170,13 +202,13 @@ impl SemanticAnalyzer {
     }
 
     /// Returns a view the symbol table.
-    pub fn sym_table(&self) -> &Vec<HashMap<String, Symbol>> {
-        &self.sym_table.tables()
+    pub const fn sym_table(&self) -> &Vec<HashMap<String, Symbol>> {
+        self.sym_table.tables()
     }
 
     /// Get the expected scope of a symbol given our index in the symbol
     /// table stack.
-    fn scope(&self) -> Scope {
+    const fn scope(&self) -> Scope {
         match self.sym_table.scope() {
             0 => Scope::Global,
             _ => Scope::Local,
@@ -186,19 +218,19 @@ impl SemanticAnalyzer {
     /// Define a new binding given a declaration.
     fn define(&mut self, stmt: &ast::Stmt) {
         match stmt {
-            ast::Stmt::Var(name, t, value) => {
+            ast::Stmt::Var(name, t, _value) => {
                 let scope = self.scope();
                 self.sym_table.bind(name, Symbol::new(name, *t, scope));
             }
             // TODO: bind the return type or compound type
-            ast::Stmt::Function(name, t, params, body) => {
+            ast::Stmt::Function(name, _t, _params, _body) => {
                 let scope = self.scope();
                 self.sym_table.bind(
                     name,
                     Symbol::new(name, types::DeclType::Function, scope),
                 );
             }
-            _ => panic!("Expected declaration found statement : {:?}", stmt),
+            _ => panic!("Expected declaration found statement : {stmt:?}"),
         }
     }
 
@@ -206,20 +238,17 @@ impl SemanticAnalyzer {
     fn resolve(&self, expr: &ast::Expr) {
         match expr {
             // Nothing to do for literals
-            ast::Expr::Literal(_) => (),
+            ast::Expr::Literal(_) | ast::Expr::Index(_, _) => (),
             // Check if the variable expression was properly bound.
             ast::Expr::Unary(_, rhs) => self.resolve(rhs),
-            ast::Expr::Binary(_, lhs, rhs) => {
-                self.resolve(lhs);
-                self.resolve(rhs);
-            }
-            ast::Expr::Logical(_, lhs, rhs) => {
+            ast::Expr::Binary(_, lhs, rhs)
+            | ast::Expr::Logical(_, lhs, rhs) => {
                 self.resolve(lhs);
                 self.resolve(rhs);
             }
             ast::Expr::Assign(name, rhs) => {
                 // Check if the assignee is properly defined
-                if let Some(_) = self.sym_table.resolve(name) {
+                if self.sym_table.resolve(name).is_some() {
                     // Assignee is properly defined try and resolve the rhs.
                     self.resolve(rhs);
                 }
@@ -232,14 +261,13 @@ impl SemanticAnalyzer {
             },
             ast::Expr::Grouping(group) => {
                 self.resolve(group);
-            },
+            }
             ast::Expr::Call(callee, args) => {
                 self.resolve(callee);
                 for arg in args {
                     self.resolve(arg);
                 }
-            },
-            _ => panic!("Trying to call a non function!"),
+            }
         }
     }
 
@@ -252,32 +280,32 @@ impl SemanticAnalyzer {
                 self.define(stmt);
                 self.sym_table.enter_scope();
                 for stmt in body {
-                    self.analyze(&stmt);
+                    self.analyze(stmt);
                 }
                 self.sym_table.leave_scope();
             }
             ast::Stmt::Block(stmts) => {
                 self.sym_table.enter_scope();
                 for stmt in stmts {
-                    self.analyze(&stmt);
+                    self.analyze(stmt);
                 }
                 self.sym_table.leave_scope();
             }
-            ast::Stmt::Expr(expr) => self.resolve(&expr),
-            ast::Stmt::Return(expr) => self.resolve(&expr),
-            ast::Stmt::If(expr, thenBranch, condBranch) => {
-                self.resolve(&expr);
-                self.analyze(&thenBranch);
-                match condBranch {
-                    None => (),
-                    Some(branch) => self.analyze(&branch),
-                }
-            },
+            ast::Stmt::If(expr, then_branch, else_branch) => {
+                self.resolve(expr);
+                self.analyze(then_branch);
+                else_branch
+                    .as_ref()
+                    .map_or((), |branch| self.analyze(branch));
+            }
             ast::Stmt::While(expr, body) => {
-                self.resolve(&expr);
-                self.analyze(&body);
-            },
-            _ => todo!(),
+                self.resolve(expr);
+                self.analyze(body);
+            }
+            ast::Stmt::Expr(expr) | ast::Stmt::Return(expr) => {
+                self.resolve(expr);
+            }
+            ast::Stmt::Break => (),
         }
     }
 
@@ -313,7 +341,7 @@ impl ast::ASTConsumer<types::DeclType> for SemanticAnalyzer {
     /// to ensure it's a `Boolean` expression.
     fn visit_stmt(&self, stmt: &ast::Stmt) -> types::DeclType {
         match stmt {
-            ast::Stmt::Var(ident, t, value) => *t,
+            ast::Stmt::Var(_ident, t, _value) => *t,
             _ => todo!(),
         }
     }
@@ -322,10 +350,9 @@ impl ast::ASTConsumer<types::DeclType> for SemanticAnalyzer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast;
+
     use crate::lexer::Lexer;
     use crate::parser::Parser;
-    use crate::types::DeclType;
 
     #[test]
     fn can_build_symbol_table() {
@@ -395,10 +422,18 @@ mod tests {
         let mut sema = SemanticAnalyzer::new();
         sema.run(&ast);
 
-        for tbl in sema.sym_table() {
-            for (name, sym) in tbl {
-                println!("Name : {} Symbol : {}", name, sym);
-            }
+        let expected = vec![
+            Symbol::new("i", types::DeclType::Integer, Scope::Global),
+            Symbol::new("die", types::DeclType::Function, Scope::Global),
+            Symbol::new("a", types::DeclType::Integer, Scope::Local),
+            Symbol::new("b", types::DeclType::Integer, Scope::Local),
+            Symbol::new("c", types::DeclType::Boolean, Scope::Local),
+            Symbol::new("d", types::DeclType::Boolean, Scope::Local),
+            Symbol::new("e", types::DeclType::Integer, Scope::Local),
+        ];
+
+        for sym in expected {
+            assert_eq!(sema.sym_table.exists(sym.name()), Some(sym));
         }
     }
 
@@ -415,8 +450,8 @@ mod tests {
 
                 {
                     let e : int = a + b;
-                    let a : boolean = !c;
-                    let d : boolean = c && a;
+                    let f : boolean = !c;
+                    let g : boolean = c && a;
                 }
             }
 
@@ -430,10 +465,20 @@ mod tests {
         let mut sema = SemanticAnalyzer::new();
         sema.run(&ast);
 
-        for tbl in sema.sym_table() {
-            for (name, sym) in tbl {
-                println!("Name : {} Symbol : {}", name, sym);
-            }
+        let expected = vec![
+            Symbol::new("i", types::DeclType::Integer, Scope::Global),
+            Symbol::new("die", types::DeclType::Function, Scope::Global),
+            Symbol::new("a", types::DeclType::Integer, Scope::Local),
+            Symbol::new("b", types::DeclType::Integer, Scope::Local),
+            Symbol::new("c", types::DeclType::Boolean, Scope::Local),
+            Symbol::new("d", types::DeclType::Boolean, Scope::Local),
+            Symbol::new("e", types::DeclType::Integer, Scope::Local),
+            Symbol::new("f", types::DeclType::Boolean, Scope::Local),
+            Symbol::new("g", types::DeclType::Boolean, Scope::Local),
+        ];
+
+        for sym in expected {
+            assert_eq!(sema.sym_table.exists(sym.name()), Some(sym));
         }
     }
 
@@ -458,7 +503,7 @@ mod tests {
 
         for sym in &symbols {
             let symbol = sym_table.resolve(sym.name());
-            assert!(!symbol.is_none());
+            assert_ne!(symbol, None);
         }
     }
 
@@ -480,7 +525,8 @@ mod tests {
 
         for sym in &symbols {
             let symbol = sym_table.resolve(sym.name());
-            assert!(!symbol.is_none());
+            assert_ne!(symbol, None);
+            assert_eq!(&symbol.unwrap(), sym);
         }
     }
 
@@ -502,7 +548,8 @@ mod tests {
 
         for sym in symbols.iter().rev() {
             let symbol = sym_table.resolve(sym.name());
-            assert!(!symbol.is_none());
+            assert_ne!(symbol, None);
+            assert_eq!(&symbol.unwrap(), sym);
         }
     }
 }

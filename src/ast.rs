@@ -72,17 +72,17 @@ pub enum LiteralValue {
 
 impl LiteralValue {
     // Return the type of the literal value as a `DeclType`.
-    pub fn get_type(&self) -> types::DeclType {
+    pub const fn get_type(&self) -> types::DeclType {
         match self {
-            LiteralValue::Int(_) => types::DeclType::Integer,
-            LiteralValue::Str(_) => types::DeclType::String,
-            LiteralValue::Char(_) => types::DeclType::Char,
-            LiteralValue::Boolean(_) => types::DeclType::Boolean,
+            Self::Int(_) => types::DeclType::Integer,
+            Self::Str(_) => types::DeclType::String,
+            Self::Char(_) => types::DeclType::Char,
+            Self::Boolean(_) => types::DeclType::Boolean,
         }
     }
 }
 
-/// ASTConsumer trait is used to encapsulate AST walking logic.
+/// `ASTConsumer` trait is used to encapsulate AST walking logic.
 pub trait ASTConsumer<T> {
     /// Visit expressions.
     fn visit_expr(&self, expr: &Expr) -> T;
@@ -117,11 +117,11 @@ mod tests {
             }
         }
 
-        fn visit_stmt(&self, stmt: &Stmt) {}
+        fn visit_stmt(&self, _stmt: &Stmt) {}
     }
     pub fn walk_expr<T>(visitor: &mut dyn ASTConsumer<T>, e: &Expr) {
         match e {
-            Expr::Binary(op, ref lhs, ref rhs) => {
+            Expr::Binary(_op, ref lhs, ref rhs) => {
                 visitor.visit_expr(lhs);
                 visitor.visit_expr(rhs);
             }
