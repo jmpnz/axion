@@ -22,6 +22,17 @@ pub enum DeclType {
     Void,
 }
 
+/// `AtomicType` is used to represent the atomic types in the langauge
+/// all type algebra is implemented on atomic types and all expressions
+/// resolve to an `AtomicType`.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum AtomicType {
+    Integer,
+    String,
+    Char,
+    Boolean,
+}
+
 impl std::fmt::Display for DeclType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {

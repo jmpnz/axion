@@ -1,7 +1,6 @@
 //! Semantic analyzer responsible for doing semantic analysis, type checking
 //! and rewriting the AST to include type annotations for the next step.
 use crate::ast;
-
 use crate::types;
 
 use std::collections::HashMap;
@@ -341,6 +340,28 @@ impl SemanticAnalyzer {
 /// - The arithmetic operators can only be applied to integer values
 /// and always return an integer..
 struct TypeChecker;
+
+impl Default for TypeChecker {
+    fn default() -> Self {
+        Self {}
+    }
+}
+
+impl TypeChecker {
+    /// Resolve the type of an expression.
+    fn resolve(&self, expr: &ast::Expr) -> types::AtomicType {
+        match expr {
+            ast::Expr::Literal(value) => match value {
+                ast::LiteralValue::Int(_) => types::AtomicType::Integer,
+                ast::LiteralValue::Str(_) => types::AtomicType::String,
+                ast::LiteralValue::Char(_) => types::AtomicType::Char,
+                ast::LiteralValue::Boolean(_) => types::AtomicType::Boolean,
+            },
+            ast::Expr::Unary(op, expr) => self.resolve(&expr),
+            _ => todo!(),
+        }
+    }
+}
 
 /// Implementation of the `ASTConsumer` trait for `SemanticAnalyzer`
 impl ast::ASTConsumer<types::DeclType> for SemanticAnalyzer {
