@@ -322,34 +322,23 @@ impl SemanticAnalyzer {
             self.analyze(stmt);
         }
     }
-}
 
-/// Type checker for the axion language, the type system we implement
-/// is very simple and enforces the following rules.
-/// - Values can only be assigned to variables of the same type.
-/// - Function parameters can only accept a value of the same type.
-/// - Return statements bind to the type of the returned values, the type must
-/// match the return type of the function.
-/// - All binary operators must have the same type on the lhs and rhs.
-/// - The equality operators can be applied to any type except `Void`
-/// and `Function` and always return a boolean.
-/// - The comparison operators can only be applied to integer values
-/// and always return boolean.
-/// - The boolean operators (!, ||, &&) can only be applied to boolean
-/// values and always return boolean.
-/// - The arithmetic operators can only be applied to integer values
-/// and always return an integer..
-struct TypeChecker;
-
-impl Default for TypeChecker {
-    fn default() -> Self {
-        Self {}
-    }
-}
-
-impl TypeChecker {
-    /// Resolve the type of an expression.
-    fn resolve(&self, expr: &ast::Expr) -> types::AtomicType {
+    /// Resolve the type of an expression, the type system we implement
+    /// is very simple and enforces the following rules.
+    /// - Values can only be assigned to variables of the same type.
+    /// - Function parameters can only accept a value of the same type.
+    /// - Return statements bind to the type of the returned values, the type must
+    /// match the return type of the function.
+    /// - All binary operators must have the same type on the lhs and rhs.
+    /// - The equality operators can be applied to any type except `Void`
+    /// and `Function` and always return a boolean.
+    /// - The comparison operators can only be applied to integer values
+    /// and always return boolean.
+    /// - The boolean operators (!, ||, &&) can only be applied to boolean
+    /// values and always return boolean.
+    /// - The arithmetic operators can only be applied to integer values
+    /// and always return an integer..
+    fn typecheck(&self, expr: &ast::Expr) -> types::AtomicType {
         match expr {
             ast::Expr::Literal(value) => match value {
                 ast::LiteralValue::Int(_) => types::AtomicType::Integer,
@@ -357,7 +346,18 @@ impl TypeChecker {
                 ast::LiteralValue::Char(_) => types::AtomicType::Char,
                 ast::LiteralValue::Boolean(_) => types::AtomicType::Boolean,
             },
-            ast::Expr::Unary(op, expr) => self.resolve(&expr),
+            // TODO: How to validate unary expressions :
+            // match op :
+            //   case ! => if resolve(expr) != boolean then panic else return
+            //   case - => if resolve(expr) != integer then panic else return
+            ast::Expr::Unary(op, expr) => self.typecheck(&expr),
+            // TODO: How to validate binary expressions:
+            // if resolve(lhs) != resolve(rhs) != integer then panic
+            ast::Expr::Binary(op, lhs, rhs) => self.typecheck(lhs),
+            // if resolve(lhs) != resolve(rhs) != boolean then panic
+            ast::Expr::Logical(op, lhs, rhs) => self.typecheck(lhs),
+            // ast::Var(name) => self.symtable.lookup(name).t
+            // return AtomicType::from(t)
             _ => todo!(),
         }
     }
