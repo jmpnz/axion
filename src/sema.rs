@@ -6,9 +6,9 @@ use crate::types;
 
 use std::collections::HashMap;
 
-/// `Kind` defines the scope of a symbol.
+/// `SymbolKind` defines the scope of a symbol.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Kind {
+pub enum SymbolKind {
     Local,
     Global,
     Param,
@@ -25,7 +25,7 @@ pub struct Symbol {
     // Optional return type for functions.
     ret: Option<types::DeclType>,
     // Symbol scope.
-    scope: Kind,
+    scope: SymbolKind,
 }
 
 impl std::fmt::Display for Symbol {
@@ -35,7 +35,7 @@ impl std::fmt::Display for Symbol {
 }
 
 impl Symbol {
-    pub fn new(name: &str, t: types::DeclType, scope: Kind) -> Self {
+    pub fn new(name: &str, t: types::DeclType, scope: SymbolKind) -> Self {
         Self {
             name: name.to_string(),
             t,
@@ -48,7 +48,7 @@ impl Symbol {
         name: &str,
         t: types::DeclType,
         ret: types::DeclType,
-        scope: Kind,
+        scope: SymbolKind,
     ) -> Self {
         Self {
             name: name.to_string(),
@@ -229,10 +229,10 @@ impl SemanticAnalyzer {
 
     /// Get the expected scope of a symbol given our index in the symbol
     /// table stack.
-    const fn scope(&self) -> Kind {
+    const fn scope(&self) -> SymbolKind {
         match self.sym_table.scope() {
-            0 => Kind::Global,
-            _ => Kind::Local,
+            0 => SymbolKind::Global,
+            _ => SymbolKind::Local,
         }
     }
 
@@ -246,7 +246,7 @@ impl SemanticAnalyzer {
             // TODO: bind the return type or compound type
             ast::Stmt::Function(name, t, _params, _body) => {
                 let scope = self.scope();
-                let sym = Symbol::new_function(
+                let mut sym = Symbol::new_function(
                     name,
                     types::DeclType::Function,
                     *t,
@@ -317,7 +317,7 @@ impl SemanticAnalyzer {
                 for param in params {
                     self.sym_table.bind(
                         &param.0,
-                        Symbol::new(&param.0, param.1, Kind::Param),
+                        Symbol::new(&param.0, param.1, SymbolKind::Param),
                     );
                 }
                 for stmt in body {
@@ -459,7 +459,7 @@ impl SemanticAnalyzer {
                 },
             ),
             ast::Expr::Grouping(expr) => self.typecheck(expr),
-            ast::Expr::Call(callee, _args) => self.typecheck(callee),
+            ast::Expr::Call(callee, args) => self.typecheck(callee),
             _ => todo!(),
         }
     }
@@ -517,7 +517,11 @@ mod tests {
                 assert_eq!(name, "i");
                 assert_eq!(
                     sym,
-                    &Symbol::new("i", types::DeclType::Integer, Kind::Global)
+                    &Symbol::new(
+                        "i",
+                        types::DeclType::Integer,
+                        SymbolKind::Global
+                    )
                 );
             }
         }
@@ -539,7 +543,11 @@ mod tests {
                 assert_eq!(name, "i");
                 assert_eq!(
                     sym,
-                    &Symbol::new("i", types::DeclType::Integer, Kind::Global)
+                    &Symbol::new(
+                        "i",
+                        types::DeclType::Integer,
+                        SymbolKind::Global
+                    )
                 );
             }
         }
@@ -598,18 +606,18 @@ mod tests {
         sema.run(&ast);
 
         let expected = vec![
-            Symbol::new("i", types::DeclType::Integer, Kind::Global),
+            Symbol::new("i", types::DeclType::Integer, SymbolKind::Global),
             Symbol::new_function(
                 "die",
                 types::DeclType::Function,
                 types::DeclType::Void,
-                Kind::Global,
+                SymbolKind::Global,
             ),
-            Symbol::new("a", types::DeclType::Integer, Kind::Local),
-            Symbol::new("b", types::DeclType::Integer, Kind::Local),
-            Symbol::new("c", types::DeclType::Boolean, Kind::Local),
-            Symbol::new("d", types::DeclType::Boolean, Kind::Local),
-            Symbol::new("e", types::DeclType::Integer, Kind::Local),
+            Symbol::new("a", types::DeclType::Integer, SymbolKind::Local),
+            Symbol::new("b", types::DeclType::Integer, SymbolKind::Local),
+            Symbol::new("c", types::DeclType::Boolean, SymbolKind::Local),
+            Symbol::new("d", types::DeclType::Boolean, SymbolKind::Local),
+            Symbol::new("e", types::DeclType::Integer, SymbolKind::Local),
         ];
 
         for sym in expected {
@@ -647,20 +655,20 @@ mod tests {
         sema.run(&ast);
 
         let expected = vec![
-            Symbol::new("i", types::DeclType::Integer, Kind::Global),
+            Symbol::new("i", types::DeclType::Integer, SymbolKind::Global),
             Symbol::new_function(
                 "die",
                 types::DeclType::Function,
                 types::DeclType::Void,
-                Kind::Global,
+                SymbolKind::Global,
             ),
-            Symbol::new("a", types::DeclType::Integer, Kind::Local),
-            Symbol::new("b", types::DeclType::Integer, Kind::Local),
-            Symbol::new("c", types::DeclType::Boolean, Kind::Local),
-            Symbol::new("d", types::DeclType::Boolean, Kind::Local),
-            Symbol::new("e", types::DeclType::Integer, Kind::Local),
-            Symbol::new("f", types::DeclType::Boolean, Kind::Local),
-            Symbol::new("g", types::DeclType::Boolean, Kind::Local),
+            Symbol::new("a", types::DeclType::Integer, SymbolKind::Local),
+            Symbol::new("b", types::DeclType::Integer, SymbolKind::Local),
+            Symbol::new("c", types::DeclType::Boolean, SymbolKind::Local),
+            Symbol::new("d", types::DeclType::Boolean, SymbolKind::Local),
+            Symbol::new("e", types::DeclType::Integer, SymbolKind::Local),
+            Symbol::new("f", types::DeclType::Boolean, SymbolKind::Local),
+            Symbol::new("g", types::DeclType::Boolean, SymbolKind::Local),
         ];
 
         for sym in expected {
@@ -672,11 +680,11 @@ mod tests {
     fn symbol_table_bind_and_resolve() {
         let mut sym_table = SymbolTable::new();
         let symbols = vec![
-            Symbol::new("a", types::DeclType::Integer, Kind::Global),
-            Symbol::new("b", types::DeclType::String, Kind::Global),
-            Symbol::new("c", types::DeclType::Boolean, Kind::Local),
-            Symbol::new("d", types::DeclType::Integer, Kind::Local),
-            Symbol::new("e", types::DeclType::Integer, Kind::Local),
+            Symbol::new("a", types::DeclType::Integer, SymbolKind::Global),
+            Symbol::new("b", types::DeclType::String, SymbolKind::Global),
+            Symbol::new("c", types::DeclType::Boolean, SymbolKind::Local),
+            Symbol::new("d", types::DeclType::Integer, SymbolKind::Local),
+            Symbol::new("e", types::DeclType::Integer, SymbolKind::Local),
         ];
 
         for sym in &symbols[..2] {
@@ -697,11 +705,11 @@ mod tests {
     fn symbol_table_bind_and_resolve_with_nested_scopes() {
         let mut sym_table = SymbolTable::new();
         let symbols = vec![
-            Symbol::new("a", types::DeclType::Integer, Kind::Global),
-            Symbol::new("b", types::DeclType::String, Kind::Local),
-            Symbol::new("c", types::DeclType::Boolean, Kind::Local),
-            Symbol::new("d", types::DeclType::Integer, Kind::Local),
-            Symbol::new("e", types::DeclType::Integer, Kind::Local),
+            Symbol::new("a", types::DeclType::Integer, SymbolKind::Global),
+            Symbol::new("b", types::DeclType::String, SymbolKind::Local),
+            Symbol::new("c", types::DeclType::Boolean, SymbolKind::Local),
+            Symbol::new("d", types::DeclType::Integer, SymbolKind::Local),
+            Symbol::new("e", types::DeclType::Integer, SymbolKind::Local),
         ];
 
         for sym in &symbols {
@@ -720,11 +728,11 @@ mod tests {
     fn symbol_table_bind_and_resolve_from_inner_scope() {
         let mut sym_table = SymbolTable::new();
         let symbols = vec![
-            Symbol::new("a", types::DeclType::Integer, Kind::Global),
-            Symbol::new("b", types::DeclType::String, Kind::Local),
-            Symbol::new("c", types::DeclType::Boolean, Kind::Local),
-            Symbol::new("d", types::DeclType::Integer, Kind::Local),
-            Symbol::new("e", types::DeclType::Integer, Kind::Local),
+            Symbol::new("a", types::DeclType::Integer, SymbolKind::Global),
+            Symbol::new("b", types::DeclType::String, SymbolKind::Local),
+            Symbol::new("c", types::DeclType::Boolean, SymbolKind::Local),
+            Symbol::new("d", types::DeclType::Integer, SymbolKind::Local),
+            Symbol::new("e", types::DeclType::Integer, SymbolKind::Local),
         ];
 
         for sym in &symbols {
