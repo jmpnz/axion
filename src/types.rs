@@ -25,6 +25,7 @@ pub enum DeclType {
 impl DeclType {
     /// Returns the `AtomicType` of the declaration if the declaration
     /// has an atomic type, else `None`.
+    #[must_use]
     pub const fn atomic(&self) -> Option<AtomicType> {
         match self {
             Self::Integer => Some(AtomicType::Integer),

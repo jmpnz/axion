@@ -6,7 +6,7 @@ fn compile_source(source: &str) {
     let tokens = lexer.lex().unwrap();
     let mut parser = Parser::new(tokens);
     let ast = parser.parse();
-    println!("AST : {:?}", ast);
+    println!("AST : {ast:?}",);
 }
 
 fn main() {

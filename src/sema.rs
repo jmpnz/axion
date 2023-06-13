@@ -50,7 +50,7 @@ impl Symbol {
     }
 
     // Returns the symbol type.
-    fn t(&self) -> types::DeclType {
+    const fn t(&self) -> types::DeclType {
         self.t
     }
 }
@@ -208,6 +208,7 @@ impl SemanticAnalyzer {
     }
 
     /// Returns a view the symbol table.
+    #[must_use]
     pub const fn sym_table(&self) -> &Vec<HashMap<String, Symbol>> {
         self.sym_table.tables()
     }
@@ -229,7 +230,7 @@ impl SemanticAnalyzer {
                 self.sym_table.bind(name, Symbol::new(name, *t, scope));
             }
             // TODO: bind the return type or compound type
-            ast::Stmt::Function(name, _t, params, _body) => {
+            ast::Stmt::Function(name, _t, _params, _body) => {
                 let scope = self.scope();
                 self.sym_table.bind(
                     name,
@@ -362,8 +363,14 @@ impl SemanticAnalyzer {
             //   case ! => if resolve(expr) != boolean then panic else return
             //   case - => if resolve(expr) != integer then panic else return
             ast::Expr::Unary(op, expr) => match op {
-                token::Token::Bang => self.typecheck(&expr),
-                token::Token::Minus => self.typecheck(&expr),
+                token::Token::Bang => match self.typecheck(expr) {
+                    types::AtomicType::Boolean => types::AtomicType::Boolean,
+                    _ => panic!("Expected operator on boolean expression"),
+                },
+                token::Token::Minus => match self.typecheck(expr) {
+                    types::AtomicType::Integer => types::AtomicType::Integer,
+                    _ => panic!("Expected operator on integer expression"),
+                },
                 _ => panic!("Unexpected token, expected '-' or '!' got {op}"),
             },
             // TODO: How to validate binary expressions:
@@ -398,37 +405,29 @@ impl SemanticAnalyzer {
             },
             ast::Expr::Assign(name, expr) => {
                 let sym = self.lookup(name);
-                match sym {
-                    Some(symbol) => {
+
+                sym.map_or_else(
+                    || panic!("Variable {name} not found"),
+                    |symbol| {
                         let Some(t) = symbol.t().atomic() else {
-                            panic!("Unexpected assignment type {}",symbol.t())
-                        };
+                         panic!("Unexpected assignment type {}",symbol.t())
+                     };
                         let expr_t = self.typecheck(expr);
                         assert!(!(expr_t != t),
-                    "Assignment of type {expr_t} to variable of type {t}");
+                 "Assignment of type {expr_t} to variable of type {t}");
                         expr_t
-                    }
-                    None => panic!("Variable {name} not found"),
-                }
+                    },
+                )
             }
-            ast::Expr::Var(name) => {
-                if let Some(sym) = self.lookup(name) {
+            ast::Expr::Var(name) => self.lookup(name).map_or_else(
+                || panic!("Variable {name} not found"),
+                |sym| {
                     let Some(t) = sym.t().atomic() else {
-                        panic!("Unexpected assignment type {}",sym.t())
-                    };
-                } else {
-                    panic!("Variable {name} not found")
-                }
-                match self.lookup(name) {
-                    Some(sym) => {
-                        let Some(t) = sym.t().atomic() else {
-                            panic!("Unexpected assignment type {}",sym.t())
-                        };
-                        t
-                    }
-                    None => panic!("Variable {name} not found"),
-                }
-            }
+                             panic!("Unexpected assignment type {}",sym.t())
+                         };
+                    t
+                },
+            ),
             // ast::Var(name) => self.symtable.lookup(name).t
             // return AtomicType::from(t)
             _ => todo!(),

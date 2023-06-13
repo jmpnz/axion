@@ -122,6 +122,7 @@ impl std::fmt::Display for Token {
 
 /// Check if the given identifier is a B-minor keyword, if it's a keyword
 /// return the respective token otherwise return `None`.
+#[must_use]
 pub fn is_keyword(ident: &str) -> Option<Token> {
     match ident {
         "break" => Some(Token::Break),
