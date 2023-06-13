@@ -43,6 +43,20 @@ impl Symbol {
             scope,
         }
     }
+    // Construct a new symbol for a function declaration.
+    pub fn new_function(
+        name: &str,
+        t: types::DeclType,
+        ret: types::DeclType,
+        scope: Kind,
+    ) -> Self {
+        Self {
+            name: name.to_string(),
+            t,
+            ret: Some(ret),
+            scope,
+        }
+    }
 
     // Returns the symbol name as an immutable reference.
     fn name(&self) -> &str {
@@ -230,12 +244,15 @@ impl SemanticAnalyzer {
                 self.sym_table.bind(name, Symbol::new(name, *t, scope));
             }
             // TODO: bind the return type or compound type
-            ast::Stmt::Function(name, _t, _params, _body) => {
+            ast::Stmt::Function(name, t, _params, _body) => {
                 let scope = self.scope();
-                self.sym_table.bind(
+                let mut sym = Symbol::new_function(
                     name,
-                    Symbol::new(name, types::DeclType::Function, scope),
+                    types::DeclType::Function,
+                    *t,
+                    scope,
                 );
+                self.sym_table.bind(name, sym);
             }
             _ => panic!("Expected declaration found statement : {stmt:?}"),
         }
@@ -375,10 +392,6 @@ impl SemanticAnalyzer {
                 ast::LiteralValue::Char(_) => types::AtomicType::Char,
                 ast::LiteralValue::Boolean(_) => types::AtomicType::Boolean,
             },
-            // TODO: How to validate unary expressions :
-            // match op :
-            //   case ! => if resolve(expr) != boolean then panic else return
-            //   case - => if resolve(expr) != integer then panic else return
             ast::Expr::Unary(op, expr) => match op {
                 token::Token::Bang => match self.typecheck(expr) {
                     types::AtomicType::Boolean => types::AtomicType::Boolean,
@@ -390,8 +403,6 @@ impl SemanticAnalyzer {
                 },
                 _ => panic!("Unexpected token, expected '-' or '!' got {op}"),
             },
-            // TODO: How to validate binary expressions:
-            // if resolve(lhs) != resolve(rhs) != integer then panic
             ast::Expr::Binary(op, lhs, rhs) => match op {
                 token::Token::Plus
                 | token::Token::Minus
@@ -407,9 +418,6 @@ impl SemanticAnalyzer {
                     "Unexpected token, expected arithmetic operator got {op}"
                 ),
             },
-            // TODO: desugar Logical expressions to be binary expressions with
-            // a logical operators.
-            // if resolve(lhs) != resolve(rhs) != boolean then panic
             ast::Expr::Logical(op, lhs, rhs) => match op {
                 token::Token::And | token::Token::Or => {
                     let lhs_t = self.typecheck(lhs);
@@ -451,6 +459,7 @@ impl SemanticAnalyzer {
                 },
             ),
             ast::Expr::Grouping(expr) => self.typecheck(expr),
+            ast::Expr::Call(callee, args) => self.typecheck(callee),
             _ => todo!(),
         }
     }
@@ -590,7 +599,12 @@ mod tests {
 
         let expected = vec![
             Symbol::new("i", types::DeclType::Integer, Kind::Global),
-            Symbol::new("die", types::DeclType::Function, Kind::Global),
+            Symbol::new_function(
+                "die",
+                types::DeclType::Function,
+                types::DeclType::Void,
+                Kind::Global,
+            ),
             Symbol::new("a", types::DeclType::Integer, Kind::Local),
             Symbol::new("b", types::DeclType::Integer, Kind::Local),
             Symbol::new("c", types::DeclType::Boolean, Kind::Local),
@@ -623,7 +637,6 @@ mod tests {
                     let g : boolean = c && a;
                 }
             }
-
         }
         "#;
         let mut lexer = Lexer::new(source);
@@ -635,7 +648,12 @@ mod tests {
 
         let expected = vec![
             Symbol::new("i", types::DeclType::Integer, Kind::Global),
-            Symbol::new("die", types::DeclType::Function, Kind::Global),
+            Symbol::new_function(
+                "die",
+                types::DeclType::Function,
+                types::DeclType::Void,
+                Kind::Global,
+            ),
             Symbol::new("a", types::DeclType::Integer, Kind::Local),
             Symbol::new("b", types::DeclType::Integer, Kind::Local),
             Symbol::new("c", types::DeclType::Boolean, Kind::Local),
