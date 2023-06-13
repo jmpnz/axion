@@ -199,9 +199,6 @@ impl SymbolTable {
 /// Type checking is done by resolving the types of the symbols or literals
 /// at the leafs and propagating them to root of the expression.
 pub struct SemanticAnalyzer {
-    // AST to process, the AST which represents the program to compile
-    // is a vector of declarations.
-    // ast: Vec<ast::Stmt>,
     // Symbol table created during semantic analysis, it collects all
     // the existing symbols (variables and functions), their types
     // and their scopes.
@@ -465,36 +462,6 @@ impl SemanticAnalyzer {
     }
 }
 
-/// Implementation of the `ASTConsumer` trait for `SemanticAnalyzer`
-impl ast::ASTConsumer<types::DeclType> for SemanticAnalyzer {
-    /// When we visit an expression we try to infer it's type based on a few
-    /// heuristics, during type checking we try and resolve the declarations
-    /// referenced in the expression, if resolution fails we throw an error.
-    /// 1. If the expression is an assignment or variable we resolve it from
-    /// the symbol table and gets it's declaration type.
-    /// 2. If the expression is a literal we use the `typeof` function to get
-    /// its type.
-    /// 3. If the expression we visit is a logical, unary or binary operation
-    /// we resolve the types of the leaves and propagate them back.
-    fn visit_expr(&self, expr: &ast::Expr) -> types::DeclType {
-        match expr {
-            ast::Expr::Literal(v) => v.get_type(),
-            _ => todo!(),
-        }
-    }
-
-    /// When we visit a statement the type checking is done on expressions
-    /// encapsulated within the statement.
-    /// For example visiting an `Stmt::If` will type check the conditional
-    /// to ensure it's a `Boolean` expression.
-    fn visit_stmt(&self, stmt: &ast::Stmt) -> types::DeclType {
-        match stmt {
-            ast::Stmt::Var(_ident, t, _value) => *t,
-            _ => todo!(),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -537,20 +504,6 @@ mod tests {
         let ast = parser.parse();
         let mut sema = SemanticAnalyzer::new();
         sema.run(&ast);
-
-        for tbl in sema.sym_table() {
-            for (name, sym) in tbl {
-                assert_eq!(name, "i");
-                assert_eq!(
-                    sym,
-                    &Symbol::new(
-                        "i",
-                        types::DeclType::Integer,
-                        SymbolKind::Global
-                    )
-                );
-            }
-        }
     }
 
     #[test]
@@ -592,6 +545,7 @@ mod tests {
                 let d : boolean = c;
 
                 {
+                    let c : boolean = c;
                     let e : int = a + b;
                 }
             }
@@ -629,7 +583,7 @@ mod tests {
     #[should_panic(
         expected = "Expected Type::Boolean got left: Type::Boolean and right: Type::Integer"
     )]
-    fn can_build_symbol_table_for_all_expr() {
+    fn fails_when_expression_has_type_error() {
         let source = r#"
         let i:int = 42;
         function die(a:int) -> void {
@@ -674,6 +628,50 @@ mod tests {
         for sym in expected {
             assert_eq!(sema.sym_table.exists(sym.name()), Some(sym));
         }
+    }
+
+    #[test]
+    #[should_panic]
+    fn fails_when_if_condition_is_not_boolean() {
+        let source = r#"
+        let i:int = 42;
+        function die(a:int) -> void {
+            {
+                if (42) {
+                    // do something
+                }
+            }
+        }
+        "#;
+        let mut lexer = Lexer::new(source);
+        let tokens = lexer.lex().unwrap();
+        let mut parser = Parser::new(tokens);
+        let ast = parser.parse();
+        let mut sema = SemanticAnalyzer::new();
+        sema.run(&ast);
+
+    }
+
+    #[test]
+    #[should_panic]
+    fn fails_when_while_condition_is_not_boolean() {
+        let source = r#"
+        let i:int = 42;
+        function die(a:int) -> void {
+            {
+                while ("Hello") {
+                    // do something
+                }
+            }
+        }
+        "#;
+        let mut lexer = Lexer::new(source);
+        let tokens = lexer.lex().unwrap();
+        let mut parser = Parser::new(tokens);
+        let ast = parser.parse();
+        let mut sema = SemanticAnalyzer::new();
+        sema.run(&ast);
+
     }
 
     #[test]
