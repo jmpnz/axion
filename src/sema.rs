@@ -141,7 +141,7 @@ impl SymbolTable {
         let tbl = &mut self.tables[self.curr_idx];
         match tbl.get(name) {
             Some(_value) => {
-                panic!("Name {name} is already bound to symbol {sym}")
+                panic!("Name {name} is already bound to {sym}")
             }
             None => {
                 tbl.insert(name.to_string(), sym);
@@ -269,7 +269,7 @@ impl SemanticAnalyzer {
             }
             ast::Expr::Var(name) => match self.sym_table.resolve(name) {
                 Some(_) => (),
-                None => panic!("Unkown variable {name}"),
+                None => panic!("Unknown variable {name}"),
             },
             ast::Expr::Grouping(group) => {
                 self.resolve(group);
@@ -287,7 +287,12 @@ impl SemanticAnalyzer {
     /// errors to display later.
     fn analyze(&mut self, stmt: &ast::Stmt) {
         match stmt {
-            ast::Stmt::Var(..) => self.define(stmt),
+            ast::Stmt::Var(_, _, expr) => {
+                self.define(stmt);
+                if let Some(expr) = expr {
+                    self.typecheck(expr);
+                }
+            }
             ast::Stmt::Function(_, _, params, ref body) => {
                 self.define(stmt);
                 self.sym_table.enter_scope();
@@ -312,6 +317,7 @@ impl SemanticAnalyzer {
             }
             ast::Stmt::If(expr, then_branch, else_branch) => {
                 self.resolve(expr);
+                self.typecheck(expr);
                 self.analyze(then_branch);
                 else_branch
                     .as_ref()
@@ -320,9 +326,11 @@ impl SemanticAnalyzer {
             ast::Stmt::While(expr, body) => {
                 self.resolve(expr);
                 self.analyze(body);
+                self.typecheck(expr);
             }
             ast::Stmt::Expr(expr) | ast::Stmt::Return(expr) => {
                 self.resolve(expr);
+                self.typecheck(expr);
             }
             ast::Stmt::Break => (),
         }
@@ -397,8 +405,13 @@ impl SemanticAnalyzer {
                 token::Token::And | token::Token::Or => {
                     let lhs_t = self.typecheck(lhs);
                     let rhs_t = self.typecheck(rhs);
-                    assert_eq!(lhs_t, rhs_t);
+                    assert_eq!(
+                        lhs_t,
+                        rhs_t,
+                        "Expected Type::Boolean got left: {lhs_t} and right: {rhs_t}"
+                    );
                     assert_eq!(lhs_t, types::AtomicType::Boolean);
+                    assert_eq!(rhs_t, types::AtomicType::Boolean);
                     lhs_t
                 }
                 _ => panic!("Unexpected token, expected '-' or '!' got {op}"),
@@ -428,8 +441,7 @@ impl SemanticAnalyzer {
                     t
                 },
             ),
-            // ast::Var(name) => self.symtable.lookup(name).t
-            // return AtomicType::from(t)
+            ast::Expr::Grouping(expr) => self.typecheck(expr),
             _ => todo!(),
         }
     }
@@ -517,7 +529,7 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "Name a is already bound to symbol Symbol(a, Type::Integer, Local)"
+        expected = "Name a is already bound to Symbol(a, Type::Integer, Local)"
     )]
     fn fail_to_build_symbol_table_when_redefining_param() {
         let source = r#"
@@ -583,6 +595,9 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(
+        expected = "Expected Type::Boolean got left: Type::Boolean and right: Type::Integer"
+    )]
     fn can_build_symbol_table_for_all_expr() {
         let source = r#"
         let i:int = 42;
@@ -601,7 +616,6 @@ mod tests {
             }
 
         }
-        die(100);
         "#;
         let mut lexer = Lexer::new(source);
         let tokens = lexer.lex().unwrap();
