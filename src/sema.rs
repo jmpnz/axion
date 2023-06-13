@@ -317,6 +317,11 @@ impl SemanticAnalyzer {
             }
             ast::Stmt::If(expr, then_branch, else_branch) => {
                 self.resolve(expr);
+                assert_eq!(
+                    self.typecheck(expr),
+                    types::AtomicType::Boolean,
+                    "Expression within `If` condition should be boolean",
+                );
                 self.typecheck(expr);
                 self.analyze(then_branch);
                 else_branch
@@ -326,7 +331,11 @@ impl SemanticAnalyzer {
             ast::Stmt::While(expr, body) => {
                 self.resolve(expr);
                 self.analyze(body);
-                self.typecheck(expr);
+                assert_eq!(
+                    self.typecheck(expr),
+                    types::AtomicType::Boolean,
+                    "Expression within `While` condition should be boolean",
+                );
             }
             ast::Stmt::Expr(expr) | ast::Stmt::Return(expr) => {
                 self.resolve(expr);
