@@ -255,7 +255,8 @@ impl SemanticAnalyzer {
         }
     }
 
-    /// Lookup an existing binding by name.
+    /// Lookup an existing binding by name, returns a `Symbol`
+    /// if one is found otherwise none.
     fn lookup(&self, name: &str) -> Option<Symbol> {
         self.sym_table.resolve(name)
     }
@@ -649,7 +650,6 @@ mod tests {
         let ast = parser.parse();
         let mut sema = SemanticAnalyzer::new();
         sema.run(&ast);
-
     }
 
     #[test]
@@ -671,7 +671,6 @@ mod tests {
         let ast = parser.parse();
         let mut sema = SemanticAnalyzer::new();
         sema.run(&ast);
-
     }
 
     #[test]
