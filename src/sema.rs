@@ -411,6 +411,24 @@ impl SemanticAnalyzer {
                     None => panic!("Variable {name} not found"),
                 }
             }
+            ast::Expr::Var(name) => {
+                if let Some(sym) = self.lookup(name) {
+                    let Some(t) = sym.t().atomic() else {
+                        panic!("Unexpected assignment type {}",sym.t())
+                    };
+                } else {
+                    panic!("Variable {name} not found")
+                }
+                match self.lookup(name) {
+                    Some(sym) => {
+                        let Some(t) = sym.t().atomic() else {
+                            panic!("Unexpected assignment type {}",sym.t())
+                        };
+                        t
+                    }
+                    None => panic!("Variable {name} not found"),
+                }
+            }
             // ast::Var(name) => self.symtable.lookup(name).t
             // return AtomicType::from(t)
             _ => todo!(),
