@@ -48,6 +48,11 @@ impl Symbol {
     fn name(&self) -> &str {
         self.name.as_str()
     }
+
+    // Returns the symbol type.
+    fn t(&self) -> types::DeclType {
+        self.t
+    }
 }
 
 /// `SymbolTable` represents a stack of symbol tables, the global scope
@@ -235,6 +240,11 @@ impl SemanticAnalyzer {
         }
     }
 
+    /// Lookup an existing binding by name.
+    fn lookup(&self, name: &str) -> Option<Symbol> {
+        self.sym_table.resolve(name)
+    }
+
     /// Resolve an expression to check if it was properly defined.
     fn resolve(&self, expr: &ast::Expr) {
         match expr {
@@ -386,6 +396,21 @@ impl SemanticAnalyzer {
                 }
                 _ => panic!("Unexpected token, expected '-' or '!' got {op}"),
             },
+            ast::Expr::Assign(name, expr) => {
+                let sym = self.lookup(name);
+                match sym {
+                    Some(symbol) => {
+                        let Some(t) = symbol.t().atomic() else {
+                            panic!("Unexpected assignment type {}",symbol.t())
+                        };
+                        let expr_t = self.typecheck(expr);
+                        assert!(!(expr_t != t),
+                    "Assignment of type {expr_t} to variable of type {t}");
+                        expr_t
+                    }
+                    None => panic!("Variable {name} not found"),
+                }
+            }
             // ast::Var(name) => self.symtable.lookup(name).t
             // return AtomicType::from(t)
             _ => todo!(),

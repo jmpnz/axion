@@ -22,15 +22,18 @@ pub enum DeclType {
     Void,
 }
 
-/// `AtomicType` is used to represent the atomic types in the langauge
-/// all type algebra is implemented on atomic types and all expressions
-/// resolve to an `AtomicType`.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum AtomicType {
-    Integer,
-    String,
-    Char,
-    Boolean,
+impl DeclType {
+    /// Returns the `AtomicType` of the declaration if the declaration
+    /// has an atomic type, else `None`.
+    pub const fn atomic(&self) -> Option<AtomicType> {
+        match self {
+            Self::Integer => Some(AtomicType::Integer),
+            Self::String => Some(AtomicType::String),
+            Self::Char => Some(AtomicType::Char),
+            Self::Boolean => Some(AtomicType::Boolean),
+            _ => None,
+        }
+    }
 }
 
 impl std::fmt::Display for DeclType {
@@ -43,6 +46,28 @@ impl std::fmt::Display for DeclType {
             Self::Array => write!(f, "Type::Array"),
             Self::Function => write!(f, "Type::Function"),
             Self::Void => write!(f, "Type::Void"),
+        }
+    }
+}
+
+/// `AtomicType` is used to represent the atomic types in the langauge
+/// all type algebra is implemented on atomic types and all expressions
+/// resolve to an `AtomicType`.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum AtomicType {
+    Integer,
+    String,
+    Char,
+    Boolean,
+}
+
+impl std::fmt::Display for AtomicType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Integer => write!(f, "Type::Integer"),
+            Self::String => write!(f, "Type::String"),
+            Self::Char => write!(f, "Type::Char"),
+            Self::Boolean => write!(f, "Type::Boolean"),
         }
     }
 }
