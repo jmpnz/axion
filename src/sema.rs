@@ -1,6 +1,7 @@
 //! Semantic analyzer responsible for doing semantic analysis, type checking
 //! and rewriting the AST to include type annotations for the next step.
 use crate::ast;
+use crate::token;
 use crate::types;
 
 use std::collections::HashMap;
@@ -350,12 +351,41 @@ impl SemanticAnalyzer {
             // match op :
             //   case ! => if resolve(expr) != boolean then panic else return
             //   case - => if resolve(expr) != integer then panic else return
-            ast::Expr::Unary(op, expr) => self.typecheck(&expr),
+            ast::Expr::Unary(op, expr) => match op {
+                token::Token::Bang => self.typecheck(&expr),
+                token::Token::Minus => self.typecheck(&expr),
+                _ => panic!("Unexpected token, expected '-' or '!' got {op}"),
+            },
             // TODO: How to validate binary expressions:
             // if resolve(lhs) != resolve(rhs) != integer then panic
-            ast::Expr::Binary(op, lhs, rhs) => self.typecheck(lhs),
+            ast::Expr::Binary(op, lhs, rhs) => match op {
+                token::Token::Plus
+                | token::Token::Minus
+                | token::Token::Slash
+                | token::Token::Star => {
+                    let lhs_t = self.typecheck(lhs);
+                    let rhs_t = self.typecheck(rhs);
+                    assert_eq!(lhs_t, rhs_t);
+                    assert_eq!(lhs_t, types::AtomicType::Integer);
+                    lhs_t
+                }
+                _ => panic!(
+                    "Unexpected token, expected arithmetic operator got {op}"
+                ),
+            },
+            // TODO: desugar Logical expressions to be binary expressions with
+            // a logical operators.
             // if resolve(lhs) != resolve(rhs) != boolean then panic
-            ast::Expr::Logical(op, lhs, rhs) => self.typecheck(lhs),
+            ast::Expr::Logical(op, lhs, rhs) => match op {
+                token::Token::And | token::Token::Or => {
+                    let lhs_t = self.typecheck(lhs);
+                    let rhs_t = self.typecheck(rhs);
+                    assert_eq!(lhs_t, rhs_t);
+                    assert_eq!(lhs_t, types::AtomicType::Boolean);
+                    lhs_t
+                }
+                _ => panic!("Unexpected token, expected '-' or '!' got {op}"),
+            },
             // ast::Var(name) => self.symtable.lookup(name).t
             // return AtomicType::from(t)
             _ => todo!(),
