@@ -13,6 +13,4 @@
 /// as a trait that can be passed to the `optimize` function.
 pub struct IRModule {
     // Text stream where instructions are written.
-    // instructions:
-    //
 }

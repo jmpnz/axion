@@ -243,7 +243,7 @@ impl SemanticAnalyzer {
             }
             ast::Stmt::Function(name, t, _params, _body) => {
                 let scope = self.scope();
-                let mut sym = Symbol::new_function(
+                let sym = Symbol::new_function(
                     name,
                     types::DeclType::Function,
                     *t,
@@ -429,9 +429,7 @@ impl SemanticAnalyzer {
                 }
             }
             ast::Expr::Assign(name, expr) => {
-                let sym = self.lookup(name);
-
-                sym.map_or_else(
+                self.lookup(name).map_or_else(
                     || panic!("Variable {name} not found"),
                     |symbol| {
                         let Some(t) = symbol.t().atomic() else {
@@ -454,7 +452,7 @@ impl SemanticAnalyzer {
                 },
             ),
             ast::Expr::Grouping(expr) => self.typecheck(expr),
-            ast::Expr::Call(callee, args) => self.typecheck(callee),
+            ast::Expr::Call(callee, _args) => self.typecheck(callee),
             _ => todo!(),
         }
     }
