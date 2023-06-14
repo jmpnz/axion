@@ -121,7 +121,7 @@ impl SymbolTable {
                 idx -= 1;
                 current_scope_table = &self.tables[idx];
             } else {
-                break None
+                break None;
             }
         }
     }
@@ -277,9 +277,10 @@ impl SemanticAnalyzer {
                 if self.sym_table.resolve(name).is_some() {
                     // Assignee is properly defined try and resolve the rhs.
                     self.resolve(rhs);
+                } else {
+                    // If it's unknown fail.
+                    panic!("Unknown variable assignment at {name}");
                 }
-                // If it's unknown fail.
-                panic!("Unknown variable assignment at {name}");
             }
             ast::Expr::Var(name) => match self.sym_table.resolve(name) {
                 Some(_) => (),
@@ -408,6 +409,14 @@ impl SemanticAnalyzer {
                         types::AtomicType::Integer,
                         types::AtomicType::Integer,
                     ) => types::AtomicType::Integer,
+                    (
+                        token::Token::Greater
+                        | token::Token::GreaterEqual
+                        | token::Token::Lesser
+                        | token::Token::LesserEqual,
+                        types::AtomicType::Integer,
+                        types::AtomicType::Integer,
+                    ) => types::AtomicType::Boolean,
 
                     (_, _, _) => panic!(
                     "Unexpected token, expected arithmetic operator got {op}"
@@ -432,6 +441,7 @@ impl SemanticAnalyzer {
                     || panic!("Variable {name} not found"),
                     |symbol| {
                         let Some(t) = symbol.t().atomic() else {
+                        // TODO if t is Type::Function, resolve return type.
                          panic!("Unexpected assignment type {}",symbol.t())
                      };
                         let expr_t = self.typecheck(expr);
@@ -679,6 +689,32 @@ mod tests {
         sema.run(&ast);
     }
 
+    #[test]
+    fn can_analyze_canonical_example() {
+        let source = r#"
+    let i:int = 42;
+    function die(a:int) -> int {
+       let accum:int = 0;
+       if (a <= 42) {
+            return 0;
+       } else {
+            a = a + 1;
+        }
+       return a;
+    }
+    function main() -> void {
+        for(let i:int = 0;i < 10000;i = i + 1) {
+            die(i);
+        }
+    }
+    "#;
+        let mut lexer = Lexer::new(source);
+        let tokens = lexer.lex().unwrap();
+        let mut parser = Parser::new(tokens);
+        let ast = parser.parse();
+        let mut sema = SemanticAnalyzer::new();
+        sema.run(&ast);
+    }
     #[test]
     fn symbol_table_bind_and_resolve() {
         let mut sym_table = SymbolTable::new();
