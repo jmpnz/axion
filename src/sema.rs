@@ -391,40 +391,43 @@ impl SemanticAnalyzer {
                 ast::LiteralValue::Boolean(_) => types::AtomicType::Boolean,
             },
             ast::Expr::Unary(op, expr) => match (op, self.typecheck(expr)) {
-                (token::Token::Bang, types::AtomicType::Boolean) => types::AtomicType::Boolean,
-                (token::Token::Minus, types::AtomicType::Integer) => types::AtomicType::Integer,
-                (_,_) => panic!("Type Error: unexpected type for {op}"),
-            }
-            ast::Expr::Binary(op, lhs, rhs) => match op {
-                token::Token::Plus
-                | token::Token::Minus
-                | token::Token::Slash
-                | token::Token::Star => {
-                    let lhs_t = self.typecheck(lhs);
-                    let rhs_t = self.typecheck(rhs);
-                    assert_eq!(lhs_t, rhs_t);
-                    assert_eq!(lhs_t, types::AtomicType::Integer);
-                    lhs_t
+                (token::Token::Bang, types::AtomicType::Boolean) => {
+                    types::AtomicType::Boolean
                 }
-                _ => panic!(
+                (token::Token::Minus, types::AtomicType::Integer) => {
+                    types::AtomicType::Integer
+                }
+                (_, t) => panic!("Type Error: unexpected type {t} for {op}"),
+            },
+            ast::Expr::Binary(op, lhs, rhs) => {
+                match (op, self.typecheck(lhs), self.typecheck(rhs)) {
+                    (
+                        token::Token::Plus
+                        | token::Token::Minus
+                        | token::Token::Slash
+                        | token::Token::Star,
+                        types::AtomicType::Integer,
+                        types::AtomicType::Integer,
+                    ) => types::AtomicType::Integer,
+
+                    (_, _, _) => panic!(
                     "Unexpected token, expected arithmetic operator got {op}"
                 ),
-            },
-            ast::Expr::Logical(op, lhs, rhs) => match op {
-                token::Token::And | token::Token::Or => {
-                    let lhs_t = self.typecheck(lhs);
-                    let rhs_t = self.typecheck(rhs);
-                    assert_eq!(
-                        lhs_t,
-                        rhs_t,
-                        "Expected Type::Boolean got left: {lhs_t} and right: {rhs_t}"
-                    );
-                    assert_eq!(lhs_t, types::AtomicType::Boolean);
-                    assert_eq!(rhs_t, types::AtomicType::Boolean);
-                    lhs_t
                 }
-                _ => panic!("Unexpected token, expected '-' or '!' got {op}"),
-            },
+            }
+            ast::Expr::Logical(op, lhs, rhs) => {
+                match (op, self.typecheck(lhs), self.typecheck(rhs)) {
+                    (
+                        token::Token::And | token::Token::Or,
+                        types::AtomicType::Boolean,
+                        types::AtomicType::Boolean,
+                    ) => types::AtomicType::Boolean,
+
+                    (_, l, r) => panic!(
+                        "Expected Type::Boolean got left: {l} and right: {r}"
+                    ),
+                }
+            }
             ast::Expr::Assign(name, expr) => {
                 let sym = self.lookup(name);
 
