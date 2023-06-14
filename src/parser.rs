@@ -46,26 +46,24 @@ impl Parser {
 
         self.eat(&Token::LParen);
         let mut params: Vec<ast::Parameter> = Vec::new();
-        if !self.next(&Token::RParen) {
-            loop {
-                let ident = match self.advance() {
-                    Token::Identifier(name) => name,
-                    _ => panic!("Expected identifier"),
-                };
-                self.eat(&Token::Colon);
+        while !self.check(&Token::RParen) {
+            let ident = match self.advance() {
+                Token::Identifier(name) => name,
+                _ => panic!("Expected identifier"),
+            };
+            self.eat(&Token::Colon);
 
-                let t = match self.advance() {
-                    Token::Int => DeclType::Integer,
-                    Token::String => DeclType::String,
-                    Token::Char => DeclType::Char,
-                    Token::Boolean => DeclType::Boolean,
-                    _ => panic!("Unknown declaration type {}", self.previous()),
-                };
-                let param = ast::Parameter(ident, t);
-                params.push(param);
-                if !self.next(&Token::Comma) {
-                    break;
-                }
+            let t = match self.advance() {
+                Token::Int => DeclType::Integer,
+                Token::String => DeclType::String,
+                Token::Char => DeclType::Char,
+                Token::Boolean => DeclType::Boolean,
+                _ => panic!("Unknown declaration type {}", self.previous()),
+            };
+            let param = ast::Parameter(ident, t);
+            params.push(param);
+            if !self.next(&Token::Comma) {
+                break;
             }
         }
         self.eat(&Token::RParen);
@@ -762,6 +760,20 @@ mod tests {
             "sum100".to_string(),
             DeclType::Void,
             vec![ast::Parameter("i".to_string(), DeclType::Integer)],
+            vec![],
+        )
+    );
+
+    test_statement_parser!(
+        function_declaration_no_args,
+        r#"
+        function sum100() -> void {
+        }
+        "#,
+        ast::Stmt::Function(
+            "sum100".to_string(),
+            DeclType::Void,
+            vec![],
             vec![],
         )
     );

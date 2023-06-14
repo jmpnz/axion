@@ -7,8 +7,8 @@ fn compile_source(source: &str) {
     let tokens = lexer.lex().unwrap();
     let mut parser = Parser::new(tokens);
     let ast = parser.parse();
-    // let mut sema = SemanticAnalyzer::new();
-    // sema.run(&ast);
+    let mut sema = SemanticAnalyzer::new();
+    sema.run(&ast);
     println!("AST : {ast:?}");
 }
 

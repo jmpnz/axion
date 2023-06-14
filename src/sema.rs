@@ -68,6 +68,11 @@ impl Symbol {
     const fn t(&self) -> types::DeclType {
         self.t
     }
+
+    // Returns the return type if its a function else `None`.
+    const fn ret_t(&self) -> Option<types::DeclType> {
+        self.ret
+    }
 }
 
 /// `SymbolTable` represents a stack of symbol tables, the global scope
@@ -451,18 +456,21 @@ impl SemanticAnalyzer {
                     },
                 )
             }
-            ast::Expr::Var(name) => self.lookup(name).map_or_else(
-                || panic!("Variable {name} not found"),
-                |sym| {
-                    let Some(t) = sym.t().atomic() else {
-                             panic!("Unexpected assignment type {}",sym.t())
-                         };
-                    t
-                },
-            ),
+            ast::Expr::Var(name) => {
+                if let Some(sym) = self.lookup(name) {
+                    match sym.t() {
+                        types::DeclType::Function => {
+                            sym.ret_t().unwrap().atomic().unwrap()
+                        }
+                        _ => sym.t.atomic().unwrap(),
+                    }
+                } else {
+                    panic!("Symbol {name} not found");
+                }
+            }
             ast::Expr::Grouping(expr) => self.typecheck(expr),
             ast::Expr::Call(callee, _args) => self.typecheck(callee),
-            _ => todo!(),
+            ast::Expr::Index(..) => todo!(),
         }
     }
 }
