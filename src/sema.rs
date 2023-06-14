@@ -121,10 +121,9 @@ impl SymbolTable {
                 idx -= 1;
                 current_scope_table = &self.tables[idx];
             } else {
-                break;
+                break None
             }
         }
-        None
     }
 
     // Resolve a new symbol.
