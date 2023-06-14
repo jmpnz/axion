@@ -35,6 +35,7 @@ impl std::fmt::Display for Symbol {
 }
 
 impl Symbol {
+    // Construct a new symbol for a declaration.
     pub fn new(name: &str, t: types::DeclType, scope: SymbolKind) -> Self {
         Self {
             name: name.to_string(),
@@ -240,7 +241,6 @@ impl SemanticAnalyzer {
                 let scope = self.scope();
                 self.sym_table.bind(name, Symbol::new(name, *t, scope));
             }
-            // TODO: bind the return type or compound type
             ast::Stmt::Function(name, t, _params, _body) => {
                 let scope = self.scope();
                 let mut sym = Symbol::new_function(
@@ -390,17 +390,11 @@ impl SemanticAnalyzer {
                 ast::LiteralValue::Char(_) => types::AtomicType::Char,
                 ast::LiteralValue::Boolean(_) => types::AtomicType::Boolean,
             },
-            ast::Expr::Unary(op, expr) => match op {
-                token::Token::Bang => match self.typecheck(expr) {
-                    types::AtomicType::Boolean => types::AtomicType::Boolean,
-                    _ => panic!("Expected operator on boolean expression"),
-                },
-                token::Token::Minus => match self.typecheck(expr) {
-                    types::AtomicType::Integer => types::AtomicType::Integer,
-                    _ => panic!("Expected operator on integer expression"),
-                },
-                _ => panic!("Unexpected token, expected '-' or '!' got {op}"),
-            },
+            ast::Expr::Unary(op, expr) => match (op, self.typecheck(expr)) {
+                (token::Token::Bang, types::AtomicType::Boolean) => types::AtomicType::Boolean,
+                (token::Token::Minus, types::AtomicType::Integer) => types::AtomicType::Integer,
+                (_,_) => panic!("Type Error: unexpected type for {op}"),
+            }
             ast::Expr::Binary(op, lhs, rhs) => match op {
                 token::Token::Plus
                 | token::Token::Minus
@@ -499,6 +493,18 @@ mod tests {
     #[should_panic]
     fn fail_to_build_symbol_table_when_undefined() {
         let source = "let i:int = 42;\n i = a;";
+        let mut lexer = Lexer::new(source);
+        let tokens = lexer.lex().unwrap();
+        let mut parser = Parser::new(tokens);
+        let ast = parser.parse();
+        let mut sema = SemanticAnalyzer::new();
+        sema.run(&ast);
+    }
+
+    #[test]
+    #[should_panic]
+    fn fail_analysis_when_operator_type_mismatch() {
+        let source = "let i:int = !42;\n let a:boolean = -true;";
         let mut lexer = Lexer::new(source);
         let tokens = lexer.lex().unwrap();
         let mut parser = Parser::new(tokens);
