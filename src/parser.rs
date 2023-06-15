@@ -120,28 +120,36 @@ impl Parser {
 
     /// Parse a statement.
     fn statement(&mut self) -> ast::Stmt {
-        if self.next(&Token::Return) {
-            let expr = self.expression();
-            self.eat(&Token::Semicolon);
-            return ast::Stmt::Return(expr);
+        match self.peek() {
+            Token::Return => {
+                self.advance();
+                let expr = self.expression();
+                self.eat(&Token::Semicolon);
+                ast::Stmt::Return(expr)
+            }
+            Token::Break => {
+                self.advance();
+                self.eat(&Token::Semicolon);
+                ast::Stmt::Break
+            }
+            Token::LBrace => {
+                self.advance();
+                self.block()
+            }
+            Token::If => {
+                self.advance();
+                self.if_stmt()
+            }
+            Token::While => {
+                self.advance();
+                self.while_stmt()
+            }
+            Token::For => {
+                self.advance();
+                self.for_stmt()
+            }
+            _ => self.expression_statement(),
         }
-        if self.next(&Token::Break) {
-            self.eat(&Token::Semicolon);
-            return ast::Stmt::Break;
-        }
-        if self.next(&Token::LBrace) {
-            return self.block();
-        }
-        if self.next(&Token::If) {
-            return self.if_stmt();
-        }
-        if self.next(&Token::While) {
-            return self.while_stmt();
-        }
-        if self.next(&Token::For) {
-            return self.for_stmt();
-        }
-        self.expression_statement()
     }
 
     /// Parse a block statement.

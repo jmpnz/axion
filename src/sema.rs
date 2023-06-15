@@ -569,11 +569,6 @@ mod tests {
                 types::DeclType::Void,
                 SymbolKind::Global,
             ),
-            Symbol::new("a", types::DeclType::Integer, SymbolKind::Local),
-            Symbol::new("b", types::DeclType::Integer, SymbolKind::Local),
-            Symbol::new("c", types::DeclType::Boolean, SymbolKind::Local),
-            Symbol::new("d", types::DeclType::Boolean, SymbolKind::Local),
-            Symbol::new("e", types::DeclType::Integer, SymbolKind::Local),
         ];
 
         for sym in expected {

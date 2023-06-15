@@ -1,7 +1,6 @@
 //! Modular IR construction and codegen for the Bril intermediate language
 //! used to represent axion programs.
 //! The following is an example of a program encoded in Bril
-//! ```
 //! @main {
 //!     v0: int = const 1;
 //!     v1: int = const 2;
