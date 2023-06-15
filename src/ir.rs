@@ -1,5 +1,14 @@
 //! Modular IR construction and codegen for the Bril intermediate language
 //! used to represent axion programs.
+//! The following is an example of a program encoded in Bril
+//! ```
+//! @main {
+//!     v0: int = const 1;
+//!     v1: int = const 2;
+//!     v2: int = add v0 v1;
+//!     v3: int = mul v2 v2;
+//!     return;
+//! }
 
 /// `IRModule` is used to store instructions and metadata related to a program
 /// module. Modules are a way to represents the intermediate representation of
