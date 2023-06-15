@@ -108,29 +108,6 @@ impl SymbolTable {
         }
     }
 
-    // Check if a symbol exists in the symbol table.
-    fn exists(&self, name: &str) -> Option<Symbol> {
-        // Get a reference to the last table in the stack.
-        let mut idx = self.tables.len() - 1;
-        let mut current_scope_table = &self.tables[idx];
-        loop {
-            // Try and find the declaration in the current scope.
-            for (ident, symbol) in current_scope_table {
-                if ident == name {
-                    return Some(symbol.clone());
-                }
-            }
-            // If we didn't find the declaration in the current scope
-            // we check the parent.
-            if idx.checked_sub(1).is_some() {
-                idx -= 1;
-                current_scope_table = &self.tables[idx];
-            } else {
-                break None;
-            }
-        }
-    }
-
     // Resolve a new symbol.
     pub fn resolve(&self, name: &str) -> Option<Symbol> {
         // Get a reference to the current scope we're processing
@@ -600,7 +577,7 @@ mod tests {
         ];
 
         for sym in expected {
-            assert_eq!(sema.sym_table.exists(sym.name()), Some(sym));
+            assert_eq!(sema.sym_table.resolve(sym.name()), Some(sym));
         }
     }
 
@@ -651,7 +628,7 @@ mod tests {
         ];
 
         for sym in expected {
-            assert_eq!(sema.sym_table.exists(sym.name()), Some(sym));
+            assert_eq!(sema.sym_table.resolve(sym.name()), Some(sym));
         }
     }
 
