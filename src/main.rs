@@ -16,13 +16,12 @@ fn main() {
     let source = r#"
     let i:int = 42;
     function die(a:int) -> int {
-       let accum:int = 0;
        if (a <= 42) {
             return 0;
        } else {
-            accum = accum + 1;
+            a = a + 1;
         }
-       return accum;
+       return a;
     }
     function main(x:int) -> void {
         for(let i:int = 0;i < 10000;i = i + 1) {

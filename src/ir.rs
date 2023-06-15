@@ -14,3 +14,23 @@
 pub struct IRModule {
     // Text stream where instructions are written.
 }
+
+/// `BrilOp` encodes the bril core language operations.
+pub enum BrilOp {
+    Add,
+    Mul,
+    Sub,
+    Div,
+    Eq,
+    Lt,
+    Gt,
+    Le,
+    Ge,
+    Not,
+    And,
+    Or,
+    Jump,
+    Branch,
+    Call,
+    Return,
+}
