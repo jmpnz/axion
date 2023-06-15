@@ -110,8 +110,20 @@ impl SymbolTable {
 
     // Resolve a new symbol.
     pub fn resolve(&self, name: &str) -> Option<Symbol> {
+        self.find(name, self.curr_idx)
+    }
+
+    // Checks if a symbol exists in the table, used to mainly for checking
+    // semantic correctness in test cases.
+    pub fn exists(&self, name: &str) -> Option<Symbol> {
+        self.find(name, self.tables.len() - 1)
+    }
+
+    // Find a symbol by starting from the given index, the index should be in
+    // the range of symbol tables stack..
+    fn find(&self, name: &str, start: usize) -> Option<Symbol> {
         // Get a reference to the current scope we're processing
-        let mut idx = self.curr_idx;
+        let mut idx = start;
         let mut current_scope_table = &self.tables[idx];
         loop {
             // Try and find the declaration in the current scope.
@@ -569,10 +581,15 @@ mod tests {
                 types::DeclType::Void,
                 SymbolKind::Global,
             ),
+            Symbol::new("a", types::DeclType::Integer, SymbolKind::Local),
+            Symbol::new("b", types::DeclType::Integer, SymbolKind::Local),
+            Symbol::new("c", types::DeclType::Boolean, SymbolKind::Local),
+            Symbol::new("d", types::DeclType::Boolean, SymbolKind::Local),
+            Symbol::new("e", types::DeclType::Integer, SymbolKind::Local),
         ];
 
         for sym in expected {
-            assert_eq!(sema.sym_table.resolve(sym.name()), Some(sym));
+            assert_eq!(sema.sym_table.exists(sym.name()), Some(sym));
         }
     }
 
