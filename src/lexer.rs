@@ -18,8 +18,6 @@ pub struct Lexer {
     pos: usize,
     /// Current line in the source code, used for error reporting.
     line: usize,
-    /// Processed tokens.
-    tokens: Vec<Token>,
 }
 
 impl Lexer {
@@ -30,46 +28,46 @@ impl Lexer {
             start: 0,
             pos: 0,
             line: 0,
-            tokens: vec![],
         }
     }
 
     /// Lex the passed source code and returns a list of tokens.
     pub fn lex(&mut self) -> Result<Vec<Token>, LexError> {
+        let mut tokens = Vec::new();
         while let Some(ch) = self.next() {
             // Grab the first lexeme as we will need to used it to scan
             // multi-character tokens such as identifiers, numbers and strings
             self.start = self.pos - 1;
             match ch {
-                '&' if self.eat('&') => self.tokens.push(Token::And),
-                '|' if self.eat('|') => self.tokens.push(Token::Or),
-                '!' if self.eat('=') => self.tokens.push(Token::BangEqual),
-                '=' if self.eat('=') => self.tokens.push(Token::EqualEqual),
-                '>' if self.eat('=') => self.tokens.push(Token::GreaterEqual),
-                '<' if self.eat('=') => self.tokens.push(Token::LesserEqual),
-                '-' if self.eat('>') => self.tokens.push(Token::Arrow),
+                '&' if self.eat('&') => tokens.push(Token::And),
+                '|' if self.eat('|') => tokens.push(Token::Or),
+                '!' if self.eat('=') => tokens.push(Token::BangEqual),
+                '=' if self.eat('=') => tokens.push(Token::EqualEqual),
+                '>' if self.eat('=') => tokens.push(Token::GreaterEqual),
+                '<' if self.eat('=') => tokens.push(Token::LesserEqual),
+                '-' if self.eat('>') => tokens.push(Token::Arrow),
                 '/' if self.eat('/') || self.eat('*') => self.eat_comment(),
-                '(' => self.tokens.push(Token::LParen),
-                ')' => self.tokens.push(Token::RParen),
-                '{' => self.tokens.push(Token::LBrace),
-                '}' => self.tokens.push(Token::RBrace),
-                '[' => self.tokens.push(Token::LBracket),
-                ']' => self.tokens.push(Token::RBracket),
-                ';' => self.tokens.push(Token::Semicolon),
-                ':' => self.tokens.push(Token::Colon),
-                ',' => self.tokens.push(Token::Comma),
-                '<' => self.tokens.push(Token::Lesser),
-                '>' => self.tokens.push(Token::Greater),
-                '=' => self.tokens.push(Token::Equal),
-                '!' => self.tokens.push(Token::Bang),
-                '*' => self.tokens.push(Token::Star),
-                '/' => self.tokens.push(Token::Slash),
-                '+' => self.tokens.push(Token::Plus),
-                '-' => self.tokens.push(Token::Minus),
-                '"' => self.string(),
-                '\'' => self.char(),
-                '0'..='9' => self.integer(),
-                '_' | 'a'..='z' | 'A'..='Z' => self.identifier(),
+                '(' => tokens.push(Token::LParen),
+                ')' => tokens.push(Token::RParen),
+                '{' => tokens.push(Token::LBrace),
+                '}' => tokens.push(Token::RBrace),
+                '[' => tokens.push(Token::LBracket),
+                ']' => tokens.push(Token::RBracket),
+                ';' => tokens.push(Token::Semicolon),
+                ':' => tokens.push(Token::Colon),
+                ',' => tokens.push(Token::Comma),
+                '<' => tokens.push(Token::Lesser),
+                '>' => tokens.push(Token::Greater),
+                '=' => tokens.push(Token::Equal),
+                '!' => tokens.push(Token::Bang),
+                '*' => tokens.push(Token::Star),
+                '/' => tokens.push(Token::Slash),
+                '+' => tokens.push(Token::Plus),
+                '-' => tokens.push(Token::Minus),
+                '"' => tokens.push(self.string()),
+                '\'' => tokens.push(self.char()),
+                '0'..='9' => tokens.push(self.integer()),
+                '_' | 'a'..='z' | 'A'..='Z' => tokens.push(self.identifier()),
                 // Do nothing on whitespace.
                 ' ' | '\r' | '\t' => (),
                 // Increment line number on newlines.
@@ -82,8 +80,8 @@ impl Lexer {
                 }
             }
         }
-        self.tokens.push(Token::Eof);
-        Ok(self.tokens.clone())
+        tokens.push(Token::Eof);
+        Ok(tokens)
     }
 
     // Return next char and increment cursor position.
@@ -124,18 +122,18 @@ impl Lexer {
     }
 
     // Scan integer literal.
-    fn integer(&mut self) {
+    fn integer(&mut self) -> Token {
         while self.peek().is_ascii_digit() {
             self.next();
         }
 
         let s = self.source[self.start..self.pos].iter().collect::<String>();
         let value = s.as_str().parse::<i64>().unwrap();
-        self.tokens.push(Token::IntegerLiteral(value));
+        Token::IntegerLiteral(value)
     }
 
     // Scan string literals enclosed in double quotes.
-    fn string(&mut self) {
+    fn string(&mut self) -> Token {
         while self.peek() != '"' && !self.eof() {
             // Handle multiline strings
             if self.peek() == '\n' {
@@ -149,10 +147,10 @@ impl Lexer {
         let s = self.source[self.start + 1..self.pos - 1]
             .iter()
             .collect::<String>();
-        self.tokens.push(Token::StringLiteral(s));
+        Token::StringLiteral(s)
     }
     // Scan literal characters enclosed in single quotes.
-    fn char(&mut self) {
+    fn char(&mut self) -> Token {
         while self.peek() != '\'' && !self.eof() {
             self.next();
         }
@@ -160,20 +158,20 @@ impl Lexer {
         self.next();
         // Trim surrounding quotes and build the char literal.
         let c = self.source[self.start + 1];
-        self.tokens.push(Token::CharacterLiteral(c));
+        Token::CharacterLiteral(c)
     }
 
     // Scan identifiers.
-    fn identifier(&mut self) {
+    fn identifier(&mut self) -> Token {
         while self.peek().is_ascii_alphanumeric() {
             self.next();
         }
 
         let s = self.source[self.start..self.pos].iter().collect::<String>();
         if let Some(keyword) = is_keyword(&s) {
-            self.tokens.push(keyword);
+            keyword
         } else {
-            self.tokens.push(Token::Identifier(s));
+            Token::Identifier(s)
         }
     }
 
