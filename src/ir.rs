@@ -20,7 +20,6 @@
 /// Optimization passes are oblivious to the an `IRModule` and are implemented
 /// as a trait that can be passed to the `optimize` function.
 pub struct IRModule {
-    // Text stream where instructions are written.
 }
 
 /// `BrilOp` encodes the bril core language operations.
