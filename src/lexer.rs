@@ -96,8 +96,6 @@ impl Lexer {
 
     // Match current character, advancing the cursor if we match `expected`.
     fn eat(&mut self, expected: char) -> bool {
-        // TODO: This shouldn't be here, we should instead return an error
-        // in the match arm when we don't recognize the next token.
         if self.eof() || self.source[self.pos] != expected {
             return false;
         }

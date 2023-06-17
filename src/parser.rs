@@ -99,7 +99,6 @@ impl Parser {
     fn var_declaration(&mut self) -> ast::Stmt {
         let ident = self.advance();
         if let Token::Identifier(name) = ident {
-            let mut initializer = None;
             self.eat(&Token::Colon);
             let t = match self.advance() {
                 Token::Int => DeclType::Integer,
@@ -108,6 +107,8 @@ impl Parser {
                 Token::Boolean => DeclType::Boolean,
                 _ => panic!("Unknown declaration type"),
             };
+            // Initialize to default value when none is assigned
+            let mut initializer = Some(ast::Expr::Literal(t.default_value()));
             if self.next(&Token::Equal) {
                 let expr = self.expression();
                 initializer = Some(expr);

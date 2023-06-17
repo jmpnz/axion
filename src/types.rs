@@ -1,5 +1,6 @@
 //! Types module define the supported primitive types and type declarations.
 //! The supported types are (int, string, char, boolean, array).
+use crate::ast;
 
 /// Before we can associate types to expressions we need to associate types
 /// to declarations. The `DeclType` enum is used to associate types with
@@ -33,6 +34,17 @@ impl DeclType {
             Self::Char => Some(AtomicType::Char),
             Self::Boolean => Some(AtomicType::Boolean),
             _ => None,
+        }
+    }
+
+    /// Returns the default value for a declared type.
+    pub fn default_value(&self) -> ast::LiteralValue {
+        match self {
+            Self::Integer => ast::LiteralValue::Int(0),
+            Self::Char => ast::LiteralValue::Char('\0'),
+            Self::String => ast::LiteralValue::Str("".to_string()),
+            Self::Boolean => ast::LiteralValue::Boolean(false),
+            t => panic!("Unsupported default value for {t}"),
         }
     }
 }

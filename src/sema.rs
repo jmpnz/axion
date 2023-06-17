@@ -391,7 +391,9 @@ impl SemanticAnalyzer {
                 (token::Token::Minus, types::AtomicType::Integer) => {
                     types::AtomicType::Integer
                 }
-                (_, t) => panic!("Type Error: unexpected type {t} for {op}"),
+                (op, t) => {
+                    panic!("Type Error: unexpected operator {op} for {t}")
+                }
             },
             ast::Expr::Binary(op, lhs, rhs) => {
                 match (op, self.typecheck(lhs), self.typecheck(rhs)) {
@@ -407,13 +409,15 @@ impl SemanticAnalyzer {
                         token::Token::Greater
                         | token::Token::GreaterEqual
                         | token::Token::Lesser
-                        | token::Token::LesserEqual,
+                        | token::Token::LesserEqual
+                        | token::Token::BangEqual
+                        | token::Token::EqualEqual,
                         types::AtomicType::Integer,
                         types::AtomicType::Integer,
                     ) => types::AtomicType::Boolean,
 
                     (_, _, _) => panic!(
-                    "Unexpected token, expected arithmetic operator got {op}"
+                    "Unexpected token, expected arithmetic or comparison operator got {op}"
                 ),
                 }
             }
@@ -425,8 +429,8 @@ impl SemanticAnalyzer {
                         types::AtomicType::Boolean,
                     ) => types::AtomicType::Boolean,
 
-                    (_, l, r) => panic!(
-                        "Expected Type::Boolean got left: {l} and right: {r}"
+                    (op, l, r) => panic!(
+                        "Expected Type::Boolean for {op} got left: {l} and right: {r}"
                     ),
                 }
             }
@@ -595,7 +599,7 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "Expected Type::Boolean got left: Type::Boolean and right: Type::Integer"
+        expected = "Expected Type::Boolean for AND got left: Type::Boolean and right: Type::Integer"
     )]
     fn fails_when_expression_has_type_error() {
         let source = r#"
