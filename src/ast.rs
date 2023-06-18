@@ -163,6 +163,18 @@ mod tests {
         fn new() -> Self {
             Self {}
         }
+
+        fn print(&self, e: &Expr) {
+            match e {
+                Expr::Binary(_op, ref lhs, ref rhs) => {
+                    self.visit_expr(lhs);
+                    self.visit_expr(rhs);
+                }
+                _ => {
+                    self.visit_expr(e);
+                }
+            }
+        }
     }
     impl ASTConsumer<()> for ASTPrinter {
         fn visit_expr(&self, expr: &Expr) {
@@ -201,6 +213,7 @@ mod tests {
             Box::new(Expr::Literal(LiteralValue::Int(5))),
         );
         let mut printer = ASTPrinter::new();
-        walk_expr(&mut printer, &expr);
+        printer.print(&expr);
+        // walk_expr(&mut printer, &expr);
     }
 }
