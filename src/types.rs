@@ -38,11 +38,14 @@ impl DeclType {
     }
 
     /// Returns the default value for a declared type.
+    /// # Panics
+    /// When `self` isn't a one of `Integer`, `Char`, `String` or `Boolean`.
+    #[must_use]
     pub fn default_value(&self) -> ast::LiteralValue {
         match self {
             Self::Integer => ast::LiteralValue::Int(0),
             Self::Char => ast::LiteralValue::Char('\0'),
-            Self::String => ast::LiteralValue::Str("".to_string()),
+            Self::String => ast::LiteralValue::Str(String::new()),
             Self::Boolean => ast::LiteralValue::Boolean(false),
             t => panic!("Unsupported default value for {t}"),
         }

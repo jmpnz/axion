@@ -36,6 +36,7 @@ impl std::fmt::Display for Symbol {
 
 impl Symbol {
     // Construct a new symbol for a declaration.
+    #[must_use]
     pub fn new(name: &str, t: types::DeclType, scope: SymbolKind) -> Self {
         Self {
             name: name.to_string(),
@@ -45,6 +46,7 @@ impl Symbol {
         }
     }
     // Construct a new symbol for a function declaration.
+    #[must_use]
     pub fn new_function(
         name: &str,
         t: types::DeclType,
@@ -99,6 +101,7 @@ impl Default for SymbolTable {
 }
 
 impl SymbolTable {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             root_idx: 0,
@@ -109,12 +112,14 @@ impl SymbolTable {
     }
 
     // Resolve a new symbol.
+    #[must_use]
     pub fn resolve(&self, name: &str) -> Option<Symbol> {
         self.find(name, self.curr_idx)
     }
 
     // Checks if a symbol exists in the table, used to mainly for checking
     // semantic correctness in test cases.
+    #[must_use]
     pub fn exists(&self, name: &str) -> Option<Symbol> {
         self.find(name, self.tables.len() - 1)
     }
@@ -145,6 +150,8 @@ impl SymbolTable {
     }
 
     // Bind a new symbol to the current scope.
+    /// # Panics
+    /// When `name` is already bound, binding fails.
     pub fn bind(&mut self, name: &str, sym: Symbol) {
         let tbl = &mut self.tables[self.curr_idx];
         match tbl.get(name) {
@@ -163,6 +170,7 @@ impl SymbolTable {
     }
 
     // Return the index of the current scope.
+    #[must_use]
     pub const fn scope(&self) -> usize {
         self.curr_idx
     }
@@ -206,6 +214,7 @@ impl Default for SemanticAnalyzer {
 }
 
 impl SemanticAnalyzer {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             sym_table: SymbolTable::new(),
@@ -220,6 +229,7 @@ impl SemanticAnalyzer {
 
     /// Get the expected scope of a symbol given our index in the symbol
     /// table stack.
+    #[must_use]
     const fn scope(&self) -> SymbolKind {
         match self.sym_table.scope() {
             0 => SymbolKind::Global,
@@ -385,10 +395,10 @@ impl SemanticAnalyzer {
                 ast::LiteralValue::Boolean(_) => types::AtomicType::Boolean,
             },
             ast::Expr::Unary(op, expr) => match (op, self.typecheck(expr)) {
-                (token::Token::Bang, types::AtomicType::Boolean) => {
+                (ast::UnaryOp::Not, types::AtomicType::Boolean) => {
                     types::AtomicType::Boolean
                 }
-                (token::Token::Minus, types::AtomicType::Integer) => {
+                (ast::UnaryOp::Neg, types::AtomicType::Integer) => {
                     types::AtomicType::Integer
                 }
                 (op, t) => {
@@ -398,20 +408,20 @@ impl SemanticAnalyzer {
             ast::Expr::Binary(op, lhs, rhs) => {
                 match (op, self.typecheck(lhs), self.typecheck(rhs)) {
                     (
-                        token::Token::Plus
-                        | token::Token::Minus
-                        | token::Token::Slash
-                        | token::Token::Star,
+                       ast::BinOp::Add
+                        | ast::BinOp::Sub
+                        | ast::BinOp::Mul
+                        | ast::BinOp::Div,
                         types::AtomicType::Integer,
                         types::AtomicType::Integer,
                     ) => types::AtomicType::Integer,
                     (
-                        token::Token::Greater
-                        | token::Token::GreaterEqual
-                        | token::Token::Lesser
-                        | token::Token::LesserEqual
-                        | token::Token::BangEqual
-                        | token::Token::EqualEqual,
+                        ast::BinOp::Gt
+                        | ast::BinOp::Gte
+                        | ast::BinOp::Lt
+                        | ast::BinOp::Lte
+                        | ast::BinOp::Neq
+                        | ast::BinOp::Equ,
                         types::AtomicType::Integer,
                         types::AtomicType::Integer,
                     ) => types::AtomicType::Boolean,
@@ -424,7 +434,7 @@ impl SemanticAnalyzer {
             ast::Expr::Logical(op, lhs, rhs) => {
                 match (op, self.typecheck(lhs), self.typecheck(rhs)) {
                     (
-                        token::Token::And | token::Token::Or,
+                        ast::LogicalOp::And | ast::LogicalOp::Or,
                         types::AtomicType::Boolean,
                         types::AtomicType::Boolean,
                     ) => types::AtomicType::Boolean,
@@ -599,7 +609,7 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "Expected Type::Boolean for AND got left: Type::Boolean and right: Type::Integer"
+        expected = "Expected Type::Boolean for && got left: Type::Boolean and right: Type::Integer"
     )]
     fn fails_when_expression_has_type_error() {
         let source = r#"

@@ -91,11 +91,11 @@ enum IROp {
     Ret(Option<SymbolRef> /*Return value*/),
 }
 
-/// IROp types encode the nature of instructions allowing us to reason
+/// `IROp` types encode the nature of instructions allowing us to reason
 /// about the overall program structure.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum IROpKind {
-    ConstOp,
-    ValueOp,
-    EffectOp,
+    Const,
+    Value,
+    Effect,
 }

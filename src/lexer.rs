@@ -22,6 +22,7 @@ pub struct Lexer {
 
 impl Lexer {
     /// Creates a new lexer instance from a given `source` string.
+    #[must_use]
     pub fn new(source: &str) -> Self {
         Self {
             source: source.chars().collect(),
@@ -32,6 +33,8 @@ impl Lexer {
     }
 
     /// Lex the passed source code and returns a list of tokens.
+    /// # Errors
+    /// Returns an error when it encounters an unknown token.
     pub fn lex(&mut self) -> Result<Vec<Token>, LexError> {
         let mut tokens = Vec::new();
         while let Some(ch) = self.next() {
@@ -166,11 +169,8 @@ impl Lexer {
         }
 
         let s = self.source[self.start..self.pos].iter().collect::<String>();
-        if let Some(keyword) = is_keyword(&s) {
-            keyword
-        } else {
-            Token::Identifier(s)
-        }
+
+        is_keyword(&s).map_or(Token::Identifier(s), |keyword| keyword)
     }
 
     // Check if we reached the end of the source.

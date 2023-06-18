@@ -1,10 +1,73 @@
 //! AST representation for Axion programs and other compiler passes.
-use crate::token;
 use crate::types;
 
 /// Function parameters are identifiers with a type.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Parameter(pub String, pub types::DeclType);
+
+/// Binary operators.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum BinOp {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Gt,
+    Gte,
+    Lt,
+    Lte,
+    Equ,
+    Neq,
+}
+
+impl std::fmt::Display for BinOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Add => write!(f, "+"),
+            Self::Sub => write!(f, "-"),
+            Self::Mul => write!(f, "*"),
+            Self::Div => write!(f, "/"),
+            Self::Gt => write!(f, ">"),
+            Self::Gte => write!(f, ">="),
+            Self::Lt => write!(f, "<"),
+            Self::Lte => write!(f, "<="),
+            Self::Equ => write!(f, "=="),
+            Self::Neq => write!(f, "!="),
+        }
+    }
+}
+
+/// Unary operators.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum UnaryOp {
+    Not,
+    Neg,
+}
+
+impl std::fmt::Display for UnaryOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Not => write!(f, "!"),
+            Self::Neg => write!(f, "-"),
+        }
+    }
+}
+
+/// Logical operators.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum LogicalOp {
+    And,
+    Or,
+}
+
+impl std::fmt::Display for LogicalOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::And => write!(f, "&&"),
+            Self::Or => write!(f, "||"),
+        }
+    }
+}
 
 /// Statements in axion are no different than statements in C or JavaScript
 /// they include the usual control flow statements and declarartions.
@@ -42,12 +105,12 @@ pub enum Expr {
     // Literal expressions simply return the literal value.
     Literal(LiteralValue),
     // Unary expressions associate a unary operator with an expression.
-    Unary(token::Token, Box<Expr>),
+    Unary(UnaryOp, Box<Expr>),
     // Binary expressions associate an infix operator with two expressions.
-    Binary(token::Token, Box<Expr>, Box<Expr>),
+    Binary(BinOp, Box<Expr>, Box<Expr>),
     // Logical expressions associate an infix logical operator with two
     // expressions
-    Logical(token::Token, Box<Expr>, Box<Expr>),
+    Logical(LogicalOp, Box<Expr>, Box<Expr>),
     // Assignment expressions associate an identifier with an expression.
     Assign(String, Box<Expr>),
     // Variable expressions associate an identifier to an expression.
@@ -133,7 +196,7 @@ mod tests {
     #[test]
     fn can_visit() {
         let expr = Expr::Binary(
-            Token::EqualEqual,
+            BinOp::Equ,
             Box::new(Expr::Literal(LiteralValue::Int(5))),
             Box::new(Expr::Literal(LiteralValue::Int(5))),
         );

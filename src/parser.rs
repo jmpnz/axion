@@ -14,6 +14,7 @@ pub struct Parser {
 impl Parser {
     /// Creates a new `Parser` instance ownership of the token stream
     /// produced by the `Lexer` is passed to the `Parser`.
+    #[must_use]
     pub fn new(tokens: Vec<Token>) -> Self {
         Self { tokens, pos: 0 }
     }
@@ -47,9 +48,8 @@ impl Parser {
         self.eat(&Token::LParen);
         let mut params: Vec<ast::Parameter> = Vec::new();
         while !self.check(&Token::RParen) {
-            let ident = match self.advance() {
-                Token::Identifier(name) => name,
-                _ => panic!("Expected identifier"),
+            let Token::Identifier(name) = self.advance() else {
+                panic!("Expected identifier")
             };
             self.eat(&Token::Colon);
 
@@ -60,7 +60,7 @@ impl Parser {
                 Token::Boolean => DeclType::Boolean,
                 _ => panic!("Unknown declaration type {}", self.previous()),
             };
-            let param = ast::Parameter(ident, t);
+            let param = ast::Parameter(name, t);
             params.push(param);
             if !self.next(&Token::Comma) {
                 break;
@@ -108,11 +108,11 @@ impl Parser {
                 _ => panic!("Unknown declaration type"),
             };
             // Initialize to default value when none is assigned
-            let mut initializer = Some(ast::Expr::Literal(t.default_value()));
-            if self.next(&Token::Equal) {
-                let expr = self.expression();
-                initializer = Some(expr);
-            }
+            let initializer = if self.next(&Token::Equal) {
+                Some(self.expression())
+            } else {
+                Some(ast::Expr::Literal(t.default_value()))
+            };
             self.eat(&Token::Semicolon);
             return ast::Stmt::Var(name, t, initializer);
         }
@@ -263,7 +263,11 @@ impl Parser {
         let mut expr = self.and();
 
         if self.next(&Token::Or) {
-            let operator = self.previous();
+            let operator = match self.previous() {
+                Token::And => ast::LogicalOp::And,
+                Token::Or => ast::LogicalOp::Or,
+                _ => panic!("Unexpected operator"),
+            };
             let right = self.and();
             expr =
                 ast::Expr::Logical(operator, Box::new(expr), Box::new(right));
@@ -276,7 +280,11 @@ impl Parser {
         let mut expr = self.equality();
 
         if self.next(&Token::And) {
-            let operator = self.previous();
+            let operator = match self.previous() {
+                Token::And => ast::LogicalOp::And,
+                Token::Or => ast::LogicalOp::Or,
+                _ => panic!("Unexpected operator"),
+            };
             let right = self.equality();
             expr =
                 ast::Expr::Logical(operator, Box::new(expr), Box::new(right));
@@ -289,7 +297,11 @@ impl Parser {
         let mut expr = self.comparison();
 
         while self.next(&Token::BangEqual) || self.next(&Token::EqualEqual) {
-            let operator = self.previous();
+            let operator = match self.previous() {
+                Token::BangEqual => ast::BinOp::Neq,
+                Token::EqualEqual => ast::BinOp::Equ,
+                _ => panic!("Unexpected operator"),
+            };
             let right = self.comparison();
             expr = ast::Expr::Binary(operator, Box::new(expr), Box::new(right));
         }
@@ -305,7 +317,13 @@ impl Parser {
             || self.next(&Token::Lesser)
             || self.next(&Token::LesserEqual)
         {
-            let operator = self.previous();
+            let operator = match self.previous() {
+                Token::Greater => ast::BinOp::Gt,
+                Token::GreaterEqual => ast::BinOp::Gte,
+                Token::Lesser => ast::BinOp::Lt,
+                Token::LesserEqual => ast::BinOp::Lte,
+                _ => panic!("Unexpected operator"),
+            };
             let right = self.term();
             expr = ast::Expr::Binary(operator, Box::new(expr), Box::new(right));
         }
@@ -317,7 +335,11 @@ impl Parser {
         let mut expr = self.factor();
 
         while self.next(&Token::Minus) || self.next(&Token::Plus) {
-            let operator = self.previous();
+            let operator = match self.previous() {
+                Token::Plus => ast::BinOp::Add,
+                Token::Minus => ast::BinOp::Sub,
+                _ => panic!("Unexpected operator"),
+            };
             let right = self.factor();
             expr = ast::Expr::Binary(operator, Box::new(expr), Box::new(right));
         }
@@ -329,7 +351,11 @@ impl Parser {
         let mut expr = self.unary();
 
         while self.next(&Token::Slash) || self.next(&Token::Star) {
-            let operator = self.previous();
+            let operator = match self.previous() {
+                Token::Star => ast::BinOp::Mul,
+                Token::Slash => ast::BinOp::Div,
+                _ => panic!("Unexpected operator"),
+            };
             let right = self.unary();
             expr = ast::Expr::Binary(operator, Box::new(expr), Box::new(right));
         }
@@ -339,7 +365,11 @@ impl Parser {
     /// Parse a unary expression.
     fn unary(&mut self) -> ast::Expr {
         if self.next(&Token::Bang) || self.next(&Token::Minus) {
-            let operator = self.previous();
+            let operator = match self.previous() {
+                Token::Bang => ast::UnaryOp::Not,
+                Token::Minus => ast::UnaryOp::Neg,
+                _ => panic!("Unexpected operator"),
+            };
             let right = self.unary();
             let expr = ast::Expr::Unary(operator, Box::new(right));
             return expr;
@@ -492,7 +522,7 @@ mod tests {
         equality_expr,
         "5 == 5",
         ast::Expr::Binary(
-            Token::EqualEqual,
+            ast::BinOp::Equ,
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
         )
@@ -502,7 +532,7 @@ mod tests {
         inequality_expr,
         "5 != 4",
         ast::Expr::Binary(
-            Token::BangEqual,
+            ast::BinOp::Neq,
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(4))),
         )
@@ -511,7 +541,7 @@ mod tests {
         comparison_gte_expr,
         "5 >= 4",
         ast::Expr::Binary(
-            Token::GreaterEqual,
+            ast::BinOp::Gte,
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(4))),
         )
@@ -520,7 +550,7 @@ mod tests {
         comparison_lte_expr,
         "5 <= 4",
         ast::Expr::Binary(
-            Token::LesserEqual,
+            ast::BinOp::Lte,
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(4))),
         )
@@ -529,7 +559,7 @@ mod tests {
         unary_expr,
         "!true",
         ast::Expr::Unary(
-            Token::Bang,
+            ast::UnaryOp::Not,
             Box::new(ast::Expr::Literal(ast::LiteralValue::Boolean(true))),
         )
     );
@@ -537,7 +567,7 @@ mod tests {
         add_expr,
         "5 + 5",
         ast::Expr::Binary(
-            Token::Plus,
+            ast::BinOp::Add,
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
         )
@@ -546,7 +576,7 @@ mod tests {
         sub_expr,
         "5 - 5",
         ast::Expr::Binary(
-            Token::Minus,
+            ast::BinOp::Sub,
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
         )
@@ -555,7 +585,7 @@ mod tests {
         mul_expr,
         "5 * 5",
         ast::Expr::Binary(
-            Token::Star,
+            ast::BinOp::Mul,
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
         )
@@ -564,7 +594,7 @@ mod tests {
         div_expr,
         "5 / 5",
         ast::Expr::Binary(
-            Token::Slash,
+            ast::BinOp::Div,
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
         )
@@ -573,10 +603,10 @@ mod tests {
         or_expr,
         "true || (5 == 5)",
         ast::Expr::Logical(
-            Token::Or,
+            ast::LogicalOp::Or,
             Box::new(ast::Expr::Literal(ast::LiteralValue::Boolean(true))),
             Box::new(ast::Expr::Grouping(Box::new(ast::Expr::Binary(
-                Token::EqualEqual,
+                ast::BinOp::Equ,
                 Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
                 Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
             )))),
@@ -586,16 +616,16 @@ mod tests {
         grouping_expr,
         "(5 / 5) * (3/4 + 1)",
         ast::Expr::Binary(
-            Token::Star,
+            ast::BinOp::Mul,
             Box::new(ast::Expr::Grouping(Box::new(ast::Expr::Binary(
-                Token::Slash,
+                ast::BinOp::Div,
                 Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
                 Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
             )))),
             Box::new(ast::Expr::Grouping(Box::new(ast::Expr::Binary(
-                Token::Plus,
+                ast::BinOp::Add,
                 Box::new(ast::Expr::Binary(
-                    Token::Slash,
+                    ast::BinOp::Div,
                     Box::new(ast::Expr::Literal(ast::LiteralValue::Int(3))),
                     Box::new(ast::Expr::Literal(ast::LiteralValue::Int(4))),
                 )),
@@ -607,13 +637,13 @@ mod tests {
         precedence_expr,
         "5 / 5 * 3/4 + 1",
         ast::Expr::Binary(
-            Token::Plus,
+            ast::BinOp::Add,
             Box::new(ast::Expr::Binary(
-                Token::Slash,
+                ast::BinOp::Div,
                 Box::new(ast::Expr::Binary(
-                    Token::Star,
+                    ast::BinOp::Mul,
                     Box::new(ast::Expr::Binary(
-                        Token::Slash,
+                        ast::BinOp::Div,
                         Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
                         Box::new(ast::Expr::Literal(ast::LiteralValue::Int(5))),
                     )),
@@ -667,7 +697,7 @@ mod tests {
         "if ( a == 42 ) { a = a + 1;} else { a = a -1; }",
         ast::Stmt::If(
             ast::Expr::Binary(
-                Token::EqualEqual,
+                ast::BinOp::Equ,
                 Box::new(ast::Expr::Var("a".to_string())),
                 Box::new(ast::Expr::Literal(ast::LiteralValue::Int(42))),
             ),
@@ -675,7 +705,7 @@ mod tests {
                 ast::Expr::Assign(
                     "a".to_string(),
                     Box::new(ast::Expr::Binary(
-                        Token::Plus,
+                        ast::BinOp::Add,
                         Box::new(ast::Expr::Var("a".to_string())),
                         Box::new(ast::Expr::Literal(ast::LiteralValue::Int(1))),
                     )),
@@ -685,7 +715,7 @@ mod tests {
                 ast::Expr::Assign(
                     "a".to_string(),
                     Box::new(ast::Expr::Binary(
-                        Token::Minus,
+                        ast::BinOp::Sub,
                         Box::new(ast::Expr::Var("a".to_string())),
                         Box::new(ast::Expr::Literal(ast::LiteralValue::Int(1))),
                     )),
@@ -703,7 +733,7 @@ mod tests {
                 ast::Expr::Assign(
                     "i".to_string(),
                     Box::new(ast::Expr::Binary(
-                        Token::Plus,
+                        ast::BinOp::Add,
                         Box::new(ast::Expr::Var("i".to_string())),
                         Box::new(ast::Expr::Literal(ast::LiteralValue::Int(1))),
                     )),
@@ -723,7 +753,7 @@ mod tests {
             ),
             ast::Stmt::While(
                 ast::Expr::Binary(
-                    Token::Lesser,
+                    ast::BinOp::Lt,
                     Box::new(ast::Expr::Var("i".to_string())),
                     Box::new(ast::Expr::Literal(ast::LiteralValue::Int(10))),
                 ),
@@ -732,7 +762,7 @@ mod tests {
                     ast::Stmt::Expr(ast::Expr::Assign(
                         "i".to_string(),
                         Box::new(ast::Expr::Binary(
-                            Token::Plus,
+                            ast::BinOp::Add,
                             Box::new(ast::Expr::Var("i".to_string())),
                             Box::new(ast::Expr::Literal(
                                 ast::LiteralValue::Int(1)
