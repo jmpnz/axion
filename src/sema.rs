@@ -180,7 +180,7 @@ impl SymbolTable {
     // Bind a new symbol to the current scope.
     // # Panics
     // When `name` is already bound, binding fails.
-    pub fn bind(&mut self, name: &str, sym: Symbol) {
+    pub fn bind(&mut self, name: &str, mut sym: Symbol) {
         let tbl = &mut self.tables[self.curr_idx];
         match tbl.get(name) {
             Some(_value) => {
@@ -217,7 +217,7 @@ impl SymbolTable {
         let mut sym_count = 0;
         let mut idx = self.curr_idx;
         // The global scope is at index 0
-        while idx > 1 {
+        while idx > 0 {
             sym_count += self.tables[idx].len();
             idx -= 1;
         }
@@ -659,37 +659,37 @@ mod tests {
                 "a",
                 types::DeclType::Integer,
                 SymbolKind::Local,
-                0,
+                1,
             ),
             Symbol::new_with_pos(
                 "b",
                 types::DeclType::Integer,
                 SymbolKind::Local,
-                1,
+                2,
             ),
             Symbol::new_with_pos(
                 "c",
                 types::DeclType::Boolean,
                 SymbolKind::Local,
-                2,
+                3,
             ),
             Symbol::new_with_pos(
                 "d",
                 types::DeclType::Boolean,
                 SymbolKind::Local,
-                3,
+                4,
             ),
             Symbol::new_with_pos(
                 "e",
                 types::DeclType::Boolean,
                 SymbolKind::Local,
-                4,
+                5,
             ),
             Symbol::new_with_pos(
                 "f",
                 types::DeclType::Integer,
                 SymbolKind::Local,
-                5,
+                6,
             ),
         ];
 
