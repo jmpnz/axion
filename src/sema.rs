@@ -26,6 +26,9 @@ pub struct Symbol {
     ret: Option<types::DeclType>,
     // Symbol scope.
     scope: SymbolKind,
+    // Symbol position in the stack when it's a local variable or function
+    // parameter. This is used during codegen to allocate in the stack.
+    pos: usize,
 }
 
 impl std::fmt::Display for Symbol {
@@ -43,8 +46,32 @@ impl Symbol {
             t,
             ret: None,
             scope,
+            pos: 0,
         }
     }
+
+    // Construct a new symbol with a position.
+    #[must_use]
+    pub fn new_with_pos(
+        name: &str,
+        t: types::DeclType,
+        scope: SymbolKind,
+        pos: usize,
+    ) -> Self {
+        Self {
+            name: name.to_string(),
+            t,
+            ret: None,
+            scope,
+            pos: pos,
+        }
+    }
+
+    // Assign a position to a symbol.
+    fn assign(&mut self, pos: usize) {
+        self.pos = pos
+    }
+
     // Construct a new symbol for a function declaration.
     #[must_use]
     pub fn new_function(
@@ -58,6 +85,7 @@ impl Symbol {
             t,
             ret: Some(ret),
             scope,
+            pos: 0,
         }
     }
 
@@ -150,8 +178,8 @@ impl SymbolTable {
     }
 
     // Bind a new symbol to the current scope.
-    /// # Panics
-    /// When `name` is already bound, binding fails.
+    // # Panics
+    // When `name` is already bound, binding fails.
     pub fn bind(&mut self, name: &str, sym: Symbol) {
         let tbl = &mut self.tables[self.curr_idx];
         match tbl.get(name) {
@@ -173,6 +201,27 @@ impl SymbolTable {
     #[must_use]
     pub const fn scope(&self) -> usize {
         self.curr_idx
+    }
+
+    // Return how many symbols exist in the current scope.
+    #[must_use]
+    fn symbol_count(&self) -> usize {
+        self.tables[self.curr_idx].len()
+    }
+
+    // Returns the expected position in the stack starting from the current
+    // scope.
+    #[must_use]
+    fn stack_position(&self) -> usize {
+        // Walk backwards until the global scope adding up the symbol count.
+        let mut sym_count = 0;
+        let mut idx = self.curr_idx;
+        // The global scope is at index 0
+        while idx > 1 {
+            sym_count += self.tables[idx].len();
+            idx -= 1;
+        }
+        sym_count
     }
 
     // Entering a new scope pushes a new symbol table into the stack.
@@ -242,7 +291,16 @@ impl SemanticAnalyzer {
         match stmt {
             ast::Stmt::Var(name, t, _value) => {
                 let scope = self.scope();
-                self.sym_table.bind(name, Symbol::new(name, *t, scope));
+                // If this is a local variable declaration we need to find
+                // the number of existing variables in the current scope
+                // so we can assign it a position.
+                let pos = match scope {
+                    SymbolKind::Local => self.sym_table.stack_position(),
+                    _ => 0,
+                };
+                let mut sym = Symbol::new(name, *t, scope);
+                sym.assign(pos);
+                self.sym_table.bind(name, sym);
             }
             ast::Stmt::Function(name, t, _params, _body) => {
                 let scope = self.scope();
@@ -315,12 +373,14 @@ impl SemanticAnalyzer {
             ast::Stmt::Function(_, _, params, ref body) => {
                 self.define(stmt);
                 self.sym_table.enter_scope();
-                // Bind parameters to the local scope
-                for param in params {
-                    self.sym_table.bind(
-                        &param.0,
-                        Symbol::new(&param.0, param.1, SymbolKind::Param),
-                    );
+                // Bind parameters to the local scope, assigning a position
+                // to each symbol so we can resolve their position in the
+                // stack later.
+                for (index, param) in params.iter().enumerate() {
+                    let mut sym =
+                        Symbol::new(&param.0, param.1, SymbolKind::Param);
+                    sym.assign(index);
+                    self.sym_table.bind(&param.0, sym);
                 }
                 for stmt in body {
                     self.analyze(stmt);
@@ -573,8 +633,8 @@ mod tests {
                 let d : boolean = c;
 
                 {
-                    let c : boolean = c;
-                    let e : int = a + b;
+                    let e : boolean = c;
+                    let f : int = a + b;
                 }
             }
 
@@ -595,11 +655,42 @@ mod tests {
                 types::DeclType::Void,
                 SymbolKind::Global,
             ),
-            Symbol::new("a", types::DeclType::Integer, SymbolKind::Local),
-            Symbol::new("b", types::DeclType::Integer, SymbolKind::Local),
-            Symbol::new("c", types::DeclType::Boolean, SymbolKind::Local),
-            Symbol::new("d", types::DeclType::Boolean, SymbolKind::Local),
-            Symbol::new("e", types::DeclType::Integer, SymbolKind::Local),
+            Symbol::new_with_pos(
+                "a",
+                types::DeclType::Integer,
+                SymbolKind::Local,
+                0,
+            ),
+            Symbol::new_with_pos(
+                "b",
+                types::DeclType::Integer,
+                SymbolKind::Local,
+                1,
+            ),
+            Symbol::new_with_pos(
+                "c",
+                types::DeclType::Boolean,
+                SymbolKind::Local,
+                2,
+            ),
+            Symbol::new_with_pos(
+                "d",
+                types::DeclType::Boolean,
+                SymbolKind::Local,
+                3,
+            ),
+            Symbol::new_with_pos(
+                "e",
+                types::DeclType::Boolean,
+                SymbolKind::Local,
+                4,
+            ),
+            Symbol::new_with_pos(
+                "f",
+                types::DeclType::Integer,
+                SymbolKind::Local,
+                5,
+            ),
         ];
 
         for sym in expected {
@@ -703,22 +794,22 @@ mod tests {
     #[test]
     fn can_analyze_canonical_example() {
         let source = r#"
-    let i:int = 42;
-    function die(a:int) -> int {
-       let accum:int = 0;
-       if (a <= 42) {
-            return 0;
-       } else {
-            a = a + 1;
+        let i:int = 42;
+        function die(a:int) -> int {
+           let accum:int = 0;
+           if (a <= 42) {
+                return 0;
+           } else {
+                a = a + 1;
+            }
+           return a;
         }
-       return a;
-    }
-    function main() -> void {
-        for(let i:int = 0;i < 10000;i = i + 1) {
-            die(i);
+        function main() -> void {
+            for(let i:int = 0;i < 10000;i = i + 1) {
+                die(i);
+            }
         }
-    }
-    "#;
+        "#;
         let mut lexer = Lexer::new(source);
         let tokens = lexer.lex().unwrap();
         let mut parser = Parser::new(tokens);
@@ -726,6 +817,7 @@ mod tests {
         let mut sema = SemanticAnalyzer::new();
         sema.run(&ast);
     }
+
     #[test]
     fn symbol_table_bind_and_resolve() {
         let mut sym_table = SymbolTable::new();
