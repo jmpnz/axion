@@ -9,7 +9,33 @@ enum CodeGenBackend {
 
 /// ScratchSpace is a table of scratch registers used to keep track of in use
 /// and free registers during code generation.
-struct ScratchSpace(u64, &'static str, bool);
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+struct ScratchSpace {
+    index: u64,
+    in_use: bool,
+}
+
+impl ScratchSpace {
+    pub fn new(index: u64, name: &str) -> ScratchSpace {
+        Self {
+            index: index,
+            in_use: false,
+        }
+    }
+    /// Return the register name given its index.
+    fn name(&self) -> &str {
+        match self.index {
+            0 => "rbx",
+            1 => "r10",
+            2 => "r11",
+            3 => "r12",
+            4 => "r13",
+            5 => "r14",
+            6 => "r15",
+            _ => panic!("Unknown register index : {0}", self.index),
+        }
+    }
+}
 
 /// `CodeGenerator` module runs a codegen pass on the AST emitting assembly.
 /// Currently we only support x86-64, the targeted platform is Linux with
@@ -28,13 +54,13 @@ impl CodeGenerator {
         Self {
             stream: Vec::new(),
             registers: vec![
-                ScratchSpace(0, "rbx", false),
-                ScratchSpace(1, "r10", false),
-                ScratchSpace(2, "r11", false),
-                ScratchSpace(3, "r12", false),
-                ScratchSpace(4, "r13", false),
-                ScratchSpace(5, "r14", false),
-                ScratchSpace(6, "r15", false),
+                ScratchSpace::new(0, "rbx"),
+                ScratchSpace::new(1, "r10"),
+                ScratchSpace::new(2, "r11"),
+                ScratchSpace::new(3, "r12"),
+                ScratchSpace::new(4, "r13"),
+                ScratchSpace::new(5, "r14"),
+                ScratchSpace::new(6, "r15"),
             ],
         }
     }
@@ -49,6 +75,28 @@ impl CodeGenerator {
     /// Compile a statement.
     fn compile_statement(&self, stmt: &ast::Stmt) {}
 
-    /// Allocates a scratch register.
-    fn allocate_scratch(&self) {}
+    /// Allocates a scratch register by finding the first unused register and
+    /// returning its name.
+    fn allocate_scratch(&mut self) -> Option<&str> {
+        self.registers
+            .iter_mut()
+            .find(|reg| !reg.in_use)
+            .map(|reg| {
+                reg.in_use = true;
+                reg.name()
+            })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn allocate_scratch_space() {
+        let mut codegen = CodeGenerator::new();
+        let r1 = codegen.allocate_scratch();
+        assert!(r1.is_some());
+        assert_eq!(r1.unwrap(), "rbx");
+    }
 }
