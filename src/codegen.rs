@@ -78,16 +78,15 @@ impl CodeGenerator {
             ast::Expr::Literal(value) => match value {
                 ast::LiteralValue::Str(s) => {
                     let label = self.create_label_name();
-                    self.emit(format!(".data"));
-                    self.emit(format!("{}:",label));
-                    self.emit(format!(".string \"{}\"", s));
-                    self.emit(format!(".text"));
-                },
+                    self.emit(&format!(".data"));
+                    self.emit(&format!("{}:", label));
+                    self.emit(&format!(".string \"{}\"", s));
+                    self.emit(&format!(".text"));
+                }
                 _ => todo!(),
             },
             _ => todo!(),
         }
-
     }
 
     /// Compile a statement.
@@ -106,7 +105,7 @@ impl CodeGenerator {
     }
 
     /// Emit assembly instructions to the stream.
-    fn emit(&mut self, inst: String) {
+    fn emit(&mut self, inst: &str) {
         use std::fmt::Write;
         writeln!(self.stream, "{}", inst).unwrap();
     }
@@ -155,7 +154,9 @@ mod tests {
 
     #[test]
     fn can_codegen_an_expression() {
-        let expr = ast::Expr::Literal(ast::LiteralValue::Str("Hello World".to_string()));
+        let expr = ast::Expr::Literal(ast::LiteralValue::Str(
+            "Hello World".to_string(),
+        ));
         let mut codegen = CodeGenerator::new();
         codegen.compile_expression(&expr);
         println!("{}", codegen.stream);
