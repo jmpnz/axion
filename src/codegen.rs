@@ -42,7 +42,7 @@ impl ScratchSpace {
 /// the System V ABI calling convention.
 struct CodeGenerator {
     // Assembly stream where generated assembly is written.
-    stream: Vec<String>,
+    stream: String,
     // Scratch registers table, the scratch registers in the System V ABI are:
     // rbx, r10, r11, r12, r13, r14, r15.
     registers: Vec<ScratchSpace>,
@@ -54,7 +54,7 @@ impl CodeGenerator {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            stream: Vec::new(),
+            stream: String::new(),
             registers: vec![
                 ScratchSpace::new(0, "rbx"),
                 ScratchSpace::new(1, "r10"),
@@ -73,7 +73,22 @@ impl CodeGenerator {
     pub fn codegen(&self, symtab: &sema::SymbolTable, ast: &[ast::Stmt]) {}
 
     /// Compile an expression.
-    fn compile_expression(&self, expr: &ast::Expr) {}
+    fn compile_expression(&mut self, expr: &ast::Expr) {
+        match expr {
+            ast::Expr::Literal(value) => match value {
+                ast::LiteralValue::Str(s) => {
+                    let label = self.create_label_name();
+                    self.emit(format!(".data"));
+                    self.emit(format!("{}:",label));
+                    self.emit(format!(".string \"{}\"", s));
+                    self.emit(format!(".text"));
+                },
+                _ => todo!(),
+            },
+            _ => todo!(),
+        }
+
+    }
 
     /// Compile a statement.
     fn compile_statement(&self, stmt: &ast::Stmt) {}
@@ -90,15 +105,27 @@ impl CodeGenerator {
             })
     }
 
+    /// Emit assembly instructions to the stream.
+    fn emit(&mut self, inst: String) {
+        use std::fmt::Write;
+        writeln!(self.stream, "{}", inst).unwrap();
+    }
+
     /// Free a scratch register.
     fn free_scratch(&mut self, index: usize) {
         self.registers[index].in_use = false;
     }
 
-    /// Create a new label.
+    /// Create a new code label.
     fn create_label(&mut self) -> String {
         self.label_counter += 1;
         format!(".L{}", self.label_counter)
+    }
+
+    /// Create a new global string label.
+    fn create_label_name(&mut self) -> String {
+        self.label_counter += 1;
+        format!("_S{}", self.label_counter)
     }
 }
 
@@ -124,5 +151,13 @@ mod tests {
             let label = codegen.create_label();
             assert_eq!(format!(".L{}", i), label);
         }
+    }
+
+    #[test]
+    fn can_codegen_an_expression() {
+        let expr = ast::Expr::Literal(ast::LiteralValue::Str("Hello World".to_string()));
+        let mut codegen = CodeGenerator::new();
+        codegen.compile_expression(&expr);
+        println!("{}", codegen.stream);
     }
 }
