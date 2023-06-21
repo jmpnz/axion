@@ -76,6 +76,15 @@ impl CodeGenerator {
     fn compile_expression(&mut self, expr: &ast::Expr) {
         match expr {
             ast::Expr::Literal(value) => match value {
+                ast::LiteralValue::Int(v) => {
+                    let maybe_reg = self.allocate_scratch();
+                    match maybe_reg  {
+                        Some(reg) => {
+                            self.emit(&format!("movq ${}, {}", v, "rbx"));
+                        },
+                        None => panic!("unavailable scratch space"),
+                    }
+                },
                 ast::LiteralValue::Str(s) => {
                     let label = self.create_label_name();
                     self.emit(&format!(".data"));
@@ -85,6 +94,17 @@ impl CodeGenerator {
                 }
                 _ => todo!(),
             },
+            ast::Expr::Binary(op, lhs, rhs) => {
+                self.compile_expression(lhs);
+                self.compile_expression(rhs);
+                match op {
+                    ast::BinOp::Add => {
+                        self.emit(&format!("addq"));
+                    },
+                    _ => todo!(),
+                }
+
+            }
             _ => todo!(),
         }
     }
@@ -100,7 +120,7 @@ impl CodeGenerator {
             .find(|reg| !reg.in_use)
             .map(|reg| {
                 reg.in_use = true;
-                reg.name()
+                reg.name().clone()
             })
     }
 
@@ -157,6 +177,22 @@ mod tests {
         let expr = ast::Expr::Literal(ast::LiteralValue::Str(
             "Hello World".to_string(),
         ));
+        let mut codegen = CodeGenerator::new();
+        codegen.compile_expression(&expr);
+        println!("{}", codegen.stream);
+    }
+
+    #[test]
+    fn can_codegen_a_binary_expression() {
+        let expr = ast::Expr::Binary(
+            ast::BinOp::Add,
+            Box::new(ast::Expr::Literal(ast::LiteralValue::Int(
+                1,
+            ))),
+            Box::new(ast::Expr::Literal(ast::LiteralValue::Int(
+                1,
+            ))),
+        );
         let mut codegen = CodeGenerator::new();
         codegen.compile_expression(&expr);
         println!("{}", codegen.stream);
