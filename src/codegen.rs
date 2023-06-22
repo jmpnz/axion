@@ -2,20 +2,15 @@
 use crate::ast;
 use crate::sema;
 
-/// Supported backends for code generation (currently supports x86 only).
-enum CodeGenBackend {
-    X86,
-}
-
-/// `ScratchSpace` is an entry of scratch registers used to keep track of in use
-/// and free registers during code generation.
+/// `ScratchSpace` is used to represent an x86 scratch registers and their
+/// state during codegen.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 struct ScratchSpace {
     index: usize,
     in_use: bool,
 }
 
-/// `ScratchTable
+/// `ScratchTable` is used to keep track of in-use scratch registers.
 struct ScratchTable {
     registers: Vec<ScratchSpace>,
 }
@@ -84,7 +79,7 @@ struct CodeGenerator {
     stream: String,
     // Scratch registers table, the scratch registers in the System V ABI are:
     // rbx, r10, r11, r12, r13, r14, r15.
-    registers: ScratchTable,
+    scratch: ScratchTable,
     // Counter used to generate new labels.
     label_counter: u64,
 }
@@ -94,7 +89,7 @@ impl CodeGenerator {
     pub fn new() -> Self {
         Self {
             stream: String::new(),
-            registers: ScratchTable::new(),
+            scratch: ScratchTable::new(),
             label_counter: 0,
         }
     }
@@ -104,14 +99,15 @@ impl CodeGenerator {
     pub fn codegen(&self, symtab: &sema::SymbolTable, ast: &[ast::Stmt]) {}
 
     /// Compile an expression.
-    fn compile_expression(&mut self, expr: &ast::Expr) {
+    fn compile_expression(&mut self, expr: &ast::Expr) -> Option<ScratchSpace> {
         match expr {
             ast::Expr::Literal(value) => match value {
                 ast::LiteralValue::Int(v) => {
-                    let maybe_reg = self.registers.allocate_scratch();
+                    let maybe_reg = self.scratch.allocate_scratch();
                     match maybe_reg {
                         Some(reg) => {
                             self.emit(&format!("movq ${}, {}", v, reg.name()));
+                            Some(reg)
                         }
                         None => panic!("unavailable scratch space"),
                     }
@@ -122,18 +118,20 @@ impl CodeGenerator {
                     self.emit(&format!("{}:", label));
                     self.emit(&format!(".string \"{}\"", s));
                     self.emit(&format!(".text"));
+                    None
                 }
                 _ => todo!(),
             },
             ast::Expr::Binary(op, lhs, rhs) => {
-                self.compile_expression(lhs);
-                self.compile_expression(rhs);
+                let r0 = self.compile_expression(lhs).unwrap();
+                let r1 = self.compile_expression(rhs).unwrap();
                 match op {
                     ast::BinOp::Add => {
-                        self.emit(&format!("addq"));
+                        self.emit(&format!("addq {}, {}", r1.name(), r0.name()));
                     }
                     _ => todo!(),
                 }
+                None
             }
             _ => todo!(),
         }
