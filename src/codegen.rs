@@ -1,10 +1,10 @@
 //! Code generation pipeline for axion programs.
 use crate::ast;
-use crate::sema;
-use crate::types;
 use crate::lexer::Lexer;
 use crate::parser::Parser;
+use crate::sema;
 use crate::sema::{SemanticAnalyzer, Symbol};
+use crate::types;
 
 /// `ScratchSpace` is used to represent an x86 scratch registers and their
 /// state during codegen.
@@ -77,6 +77,19 @@ impl ScratchSpace {
             5 => "r14",
             6 => "r15",
             _ => panic!("Unknown register index : {0}", self.index),
+        }
+    }
+
+    /// Return the abi name for the argument's register index.
+    fn arg_name(index: usize) -> &'static str {
+        match index {
+            0 => "rdi",
+            1 => "rsi",
+            2 => "rdx",
+            3 => "rcx",
+            4 => "r8",
+            5 => "r9",
+            _ => panic!("Unknown register index : {0}", index),
         }
     }
 }
@@ -160,10 +173,18 @@ impl CodeGenerator {
                 let r1 = self.compile_expression(rhs).unwrap();
                 match op {
                     ast::BinOp::Add => {
-                        self.emit(&format!("addq {}, {}", r1.name(), r0.name()));
+                        self.emit(&format!(
+                            "addq {}, {}",
+                            r1.name(),
+                            r0.name()
+                        ));
                     }
                     ast::BinOp::Sub => {
-                        self.emit(&format!("subq {}, {}", r1.name(), r0.name()));
+                        self.emit(&format!(
+                            "subq {}, {}",
+                            r1.name(),
+                            r0.name()
+                        ));
                     }
                     ast::BinOp::Div => {
                         self.emit(&format!("movq $0, %%rdx"));
@@ -174,9 +195,12 @@ impl CodeGenerator {
                         self.scratch.free(r0.index());
                         match self.scratch.allocate() {
                             Some(reg) => {
-                                self.emit(&format!("movq %%rax, {}", reg.name()));
+                                self.emit(&format!(
+                                    "movq %%rax, {}",
+                                    reg.name()
+                                ));
                                 return Some(reg);
-                            },
+                            }
                             None => panic!("unavailable scratch space"),
                         }
                     }
@@ -187,9 +211,12 @@ impl CodeGenerator {
                         self.scratch.free(r0.index());
                         match self.scratch.allocate() {
                             Some(reg) => {
-                                self.emit(&format!("movq %%rax, {}", reg.name()));
+                                self.emit(&format!(
+                                    "movq %%rax, {}",
+                                    reg.name()
+                                ));
                                 return Some(reg);
-                            },
+                            }
                             None => panic!("unavailable scratch space"),
                         }
                     }
@@ -231,19 +258,23 @@ impl CodeGenerator {
                     _ => todo!(),
                 }
                 None
-            },
+            }
             ast::Expr::Logical(op, lhs, rhs) => {
                 let r0 = self.compile_expression(lhs).unwrap();
                 let r1 = self.compile_expression(rhs).unwrap();
                 match op {
                     ast::LogicalOp::And => {
-                        self.emit(&format!("andq {}, {}", r0.name(), r1.name()));
+                        self.emit(&format!(
+                            "andq {}, {}",
+                            r0.name(),
+                            r1.name()
+                        ));
                         Some(r1)
-                    },
+                    }
                     ast::LogicalOp::Or => {
                         self.emit(&format!("orq {}, {}", r0.name(), r1.name()));
                         Some(r1)
-                    },
+                    }
                 }
             }
             ast::Expr::Unary(op, rhs) => {
@@ -252,7 +283,7 @@ impl CodeGenerator {
                     ast::UnaryOp::Neg => {
                         self.emit(&format!("neg {}", r.name()));
                         Some(r)
-                    },
+                    }
                     ast::UnaryOp::Not => {
                         let label = self.create_label();
                         self.emit(&format!("cmp $0, {}", r.name()));
@@ -261,27 +292,52 @@ impl CodeGenerator {
                         self.emit(&format!("movq $0, {}", r.name()));
                         self.emit(&format!("{}:", label));
                         Some(r)
-                    },
+                    }
                 }
-            },
+            }
             ast::Expr::Grouping(expr) => self.compile_expression(expr),
             ast::Expr::Assign(name, expr) => {
                 let r = self.compile_expression(expr).unwrap();
                 let sym = self.create_symbol(name);
                 self.emit(&format!("movq {}, {}", r.name(), sym));
                 Some(r)
-            },
+            }
             ast::Expr::Var(name) => {
                 let sym = self.resolve_symbol(name);
                 let reg = self.scratch.allocate().unwrap();
                 if sym.t() != types::DeclType::String
-                    || sym.scope() != sema::SymbolKind::Global {
-                        let s = self.create_symbol(name);
-                        self.emit(&format!("movq {}, {}", s, reg.name()));
-                        return Some(reg);
-                    }
+                    || sym.scope() != sema::SymbolKind::Global
+                {
+                    let s = self.create_symbol(name);
+                    self.emit(&format!("movq {}, {}", s, reg.name()));
+                    return Some(reg);
+                }
                 None
-            },
+            }
+            ast::Expr::Call(callee, args) => {
+                self.emit(&format!("pushq %%r10"));
+                self.emit(&format!("pushq %%r11"));
+                // Prepare arguments
+                for (index, arg) in args.iter().enumerate() {
+                    let reg = self.compile_expression(arg).unwrap();
+                    self.emit(&format!(
+                        "movq {}, {}",
+                        reg.name(),
+                        ScratchSpace::arg_name(index)
+                    ));
+                    self.scratch.free(reg.index());
+                }
+                let func_name = match callee.as_ref() {
+                    ast::Expr::Var(name) => name.clone(),
+                    _ => panic!("unexpected call expression"),
+                };
+                self.emit(&format!("call {}", func_name));
+                self.emit(&format!("popq %%r11"));
+                self.emit(&format!("popq %%r10"));
+                let reg = self.scratch.allocate().unwrap();
+                self.emit(&format!("movq %%rax, {}", reg.name()));
+                Some(reg)
+            }
             _ => todo!(),
         }
     }
@@ -308,7 +364,7 @@ impl CodeGenerator {
     }
 
     /// Resolve a symbol from the symbtable.
-    fn resolve_symbol(&self, name:&str) -> Symbol {
+    fn resolve_symbol(&self, name: &str) -> Symbol {
         match self.symtable.resolve(name) {
             Some(sym) => sym,
             None => panic!("symbol {} not found", name),
@@ -316,14 +372,12 @@ impl CodeGenerator {
     }
 
     /// Resolve a symbol from the symbol table creating its equivalent codegen.
-    fn create_symbol(&self,name:&str) -> String {
+    fn create_symbol(&self, name: &str) -> String {
         match self.symtable.resolve(name) {
-            Some(sym) => {
-                match sym.scope() {
-                    sema::SymbolKind::Global => name.to_string(),
-                    sema::SymbolKind::Local | sema::SymbolKind::Param => {
-                        format!("-%{}(%%rbp)", sym.pos() * 8)
-                    }
+            Some(sym) => match sym.scope() {
+                sema::SymbolKind::Global => name.to_string(),
+                sema::SymbolKind::Local | sema::SymbolKind::Param => {
+                    format!("-%{}(%%rbp)", sym.pos() * 8)
                 }
             },
             None => panic!("symbol {} not found", name),
