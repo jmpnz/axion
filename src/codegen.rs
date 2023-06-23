@@ -225,6 +225,20 @@ impl CodeGenerator {
                 }
                 None
             },
+            ast::Expr::Logical(op, lhs, rhs) => {
+                let r0 = self.compile_expression(lhs).unwrap();
+                let r1 = self.compile_expression(rhs).unwrap();
+                match op {
+                    ast::LogicalOp::And => {
+                        self.emit(&format!("andq {}, {}", r0.name(), r1.name()));
+                        Some(r1)
+                    },
+                    ast::LogicalOp::Or => {
+                        self.emit(&format!("orq {}, {}", r0.name(), r1.name()));
+                        Some(r1)
+                    },
+                }
+            }
             ast::Expr::Unary(op, rhs) => {
                 let r = self.compile_expression(rhs).unwrap();
                 match op {
