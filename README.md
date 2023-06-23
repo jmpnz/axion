@@ -1,4 +1,18 @@
-# axion : a small, statically typed and compiled language
+# axion : a small, statically typed, compiled language
+
+axion is a toy language hacked together for the sole purpose of learning
+how compilers fit together.
+
+The current `axion` compiler is written in Rust and includes a front end with
+a lexer, hand written recursive descent parser with `panic!` error reporting and
+a type checker that does most of the semantic analysis.
+
+`axion` compiles code to x86 assembly  so it needs `gcc` or `clang` to bundle
+the assembly to object file and link them to executable binaries.
+
+## Examples
+
+Here are some code examples for what axion looks like.
 
 ```javascript
 
@@ -15,16 +29,6 @@ function sumArray(arr: array[int], size: int) -> int {
 
 ```
 
-The current `axion` compiler is written in Rust and includes a front end with
-a lexer, hand written recursive descent parser with basic error reporting and
-a type checker that does most of the semantic analysis.
-
-The middleware translates the AST representation into an IR and runs various
-optimiziation passes. Currently `axion` has one backend and compiles to only
-a single target architecture (x86-64). The rest of work is dispatched to your
-linker.
-
-Here are some examples of code in `axion`.
 
 ```javascript
 
@@ -50,12 +54,10 @@ function until4000(x : int) -> int {
 
 // If a function has no return type it is assumed it returns "void".
 // `main` denotes the entry point.
-function @main() {
-    // Maybe do type inference.
+function main() {
     let x : int = 987;
     let y : int = until4000(x);
-    // Print is a native statement that writes to stdout
-    print(x);
+    return x + y;
 }
 
 ```
