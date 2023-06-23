@@ -173,6 +173,19 @@ impl CodeGenerator {
                             None => panic!("unavailable scratch space"),
                         }
                     }
+                    ast::BinOp::Mul => {
+                        self.emit(&format!("movq {}, %%rax", r0.name()));
+                        self.emit(&format!("imulq {}", r1.name()));
+                        self.scratch.free(r1.index());
+                        self.scratch.free(r0.index());
+                        match self.scratch.allocate() {
+                            Some(reg) => {
+                                self.emit(&format!("movq %%rax, {}", reg.name()));
+                                return Some(reg);
+                            },
+                            None => panic!("unavailable scratch space"),
+                        }
+                    }
                     _ => todo!(),
                 }
                 None
