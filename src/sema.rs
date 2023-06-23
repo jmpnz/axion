@@ -95,13 +95,23 @@ impl Symbol {
     }
 
     // Returns the symbol type.
-    const fn t(&self) -> types::DeclType {
+    pub fn t(&self) -> types::DeclType {
         self.t
     }
 
     // Returns the return type if its a function else `None`.
     const fn ret_t(&self) -> Option<types::DeclType> {
         self.ret
+    }
+
+    // Returns the symbol scope.
+    pub fn scope(&self) -> SymbolKind {
+        self.scope
+    }
+
+    // Returns the symbol position in the declarative stack.
+    pub fn pos(&self) -> usize {
+        self.pos
     }
 }
 
@@ -110,6 +120,7 @@ impl Symbol {
 /// a new scope (scopes are enclosed within `ast::Stmt::Block`) we push
 /// a new symbol table into the stack and all declarations within the
 /// scope end up in the most recent symbol table.
+#[derive(Debug, Clone)]
 pub struct SymbolTable {
     // Root index in the stack represents the global scope, the root index
     // is immutable.
@@ -276,6 +287,11 @@ impl SemanticAnalyzer {
         self.sym_table.tables()
     }
 
+    /// Returns the symbol table.
+    pub fn symtable(&self) -> SymbolTable {
+        self.sym_table.clone()
+    }
+
     /// Get the expected scope of a symbol given our index in the symbol
     /// table stack.
     #[must_use]
@@ -323,7 +339,7 @@ impl SemanticAnalyzer {
     }
 
     /// Resolve an expression to check if it was properly defined.
-    fn resolve(&self, expr: &ast::Expr) {
+    pub fn resolve(&self, expr: &ast::Expr) {
         match expr {
             // Nothing to do for literals
             ast::Expr::Literal(_) | ast::Expr::Index(_, _) => (),

@@ -1,6 +1,10 @@
 //! Code generation pipeline for axion programs.
 use crate::ast;
 use crate::sema;
+use crate::types;
+use crate::lexer::Lexer;
+use crate::parser::Parser;
+use crate::sema::{SemanticAnalyzer, Symbol};
 
 /// `ScratchSpace` is used to represent an x86 scratch registers and their
 /// state during codegen.
@@ -86,17 +90,20 @@ struct CodeGenerator {
     // Scratch registers table, the scratch registers in the System V ABI are:
     // rbx, r10, r11, r12, r13, r14, r15.
     scratch: ScratchTable,
+    // Symbol table.
+    symtable: sema::SymbolTable,
     // Counter used to generate new labels.
     label_counter: u64,
 }
 
 impl CodeGenerator {
     #[must_use]
-    pub fn new() -> Self {
+    pub fn new(symtable: sema::SymbolTable) -> Self {
         Self {
             stream: String::new(),
             scratch: ScratchTable::new(),
             label_counter: 0,
+            symtable: symtable,
         }
     }
 
@@ -256,7 +263,25 @@ impl CodeGenerator {
                         Some(r)
                     },
                 }
-            }
+            },
+            ast::Expr::Grouping(expr) => self.compile_expression(expr),
+            ast::Expr::Assign(name, expr) => {
+                let r = self.compile_expression(expr).unwrap();
+                let sym = self.create_symbol(name);
+                self.emit(&format!("movq {}, {}", r.name(), sym));
+                Some(r)
+            },
+            ast::Expr::Var(name) => {
+                let sym = self.resolve_symbol(name);
+                let reg = self.scratch.allocate().unwrap();
+                if sym.t() != types::DeclType::String
+                    || sym.scope() != sema::SymbolKind::Global {
+                        let s = self.create_symbol(name);
+                        self.emit(&format!("movq {}, {}", s, reg.name()));
+                        return Some(reg);
+                    }
+                None
+            },
             _ => todo!(),
         }
     }
@@ -280,6 +305,29 @@ impl CodeGenerator {
     fn create_label_name(&mut self) -> String {
         self.label_counter += 1;
         format!("_S{}", self.label_counter)
+    }
+
+    /// Resolve a symbol from the symbtable.
+    fn resolve_symbol(&self, name:&str) -> Symbol {
+        match self.symtable.resolve(name) {
+            Some(sym) => sym,
+            None => panic!("symbol {} not found", name),
+        }
+    }
+
+    /// Resolve a symbol from the symbol table creating its equivalent codegen.
+    fn create_symbol(&self,name:&str) -> String {
+        match self.symtable.resolve(name) {
+            Some(sym) => {
+                match sym.scope() {
+                    sema::SymbolKind::Global => name.to_string(),
+                    sema::SymbolKind::Local | sema::SymbolKind::Param => {
+                        format!("-%{}(%%rbp)", sym.pos() * 8)
+                    }
+                }
+            },
+            None => panic!("symbol {} not found", name),
+        }
     }
 }
 
@@ -307,7 +355,8 @@ mod tests {
         let expr = ast::Expr::Literal(ast::LiteralValue::Str(
             "Hello World".to_string(),
         ));
-        let mut codegen = CodeGenerator::new();
+        let sem_analyzer = sema::SemanticAnalyzer::new();
+        let mut codegen = CodeGenerator::new(sem_analyzer.symtable());
         codegen.compile_expression(&expr);
         println!("{}", codegen.stream);
     }
@@ -319,8 +368,26 @@ mod tests {
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(1))),
             Box::new(ast::Expr::Literal(ast::LiteralValue::Int(1))),
         );
-        let mut codegen = CodeGenerator::new();
+        let sem_analyzer = sema::SemanticAnalyzer::new();
+        let mut codegen = CodeGenerator::new(sem_analyzer.symtable());
         codegen.compile_expression(&expr);
         println!("{}", codegen.stream);
+    }
+
+    #[test]
+    #[should_panic]
+    fn can_codegen_basic_block() {
+        let source = r#"
+            let a : int = 5;
+            let b : int = c;
+            let c : int = a + b;
+        "#;
+        let mut lexer = Lexer::new(source);
+        let tokens = lexer.lex().unwrap();
+        let mut parser = Parser::new(tokens);
+        let ast = parser.parse();
+        let mut sema = SemanticAnalyzer::new();
+        sema.run(&ast);
+        let mut codegen = CodeGenerator::new(sema.symtable());
     }
 }
