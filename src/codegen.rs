@@ -186,6 +186,41 @@ impl CodeGenerator {
                             None => panic!("unavailable scratch space"),
                         }
                     }
+                    _ => {
+                        self.emit(&format!("cmp {}, {}", r1.name(), r0.name()));
+                        self.scratch.free(r1.index());
+                        self.scratch.free(r0.index());
+
+                        let reg = self.scratch.allocate().unwrap();
+                        let label = self.create_label();
+
+                        self.emit(&format!("movq $1, {}", reg.name()));
+                        match op {
+                            ast::BinOp::Gt => {
+                                self.emit(&format!("jg {}", label));
+                            }
+                            ast::BinOp::Gte => {
+                                self.emit(&format!("jge {}", label));
+                            }
+                            ast::BinOp::Lt => {
+                                self.emit(&format!("jl {}", label));
+                            }
+                            ast::BinOp::Lte => {
+                                self.emit(&format!("jle {}", label));
+                            }
+                            ast::BinOp::Equ => {
+                                self.emit(&format!("je {}", label));
+                            }
+                            ast::BinOp::Neq => {
+                                self.emit(&format!("jne {}", label));
+                            }
+                            _ => panic!("unexpected operatiion"),
+                        }
+                        self.emit(&format!("movq $0, {}", reg.name()));
+                        self.emit(&format!("{}:", label));
+                        return Some(reg);
+                    }
+
                     _ => todo!(),
                 }
                 None
