@@ -112,6 +112,26 @@ impl CodeGenerator {
                         None => panic!("unavailable scratch space"),
                     }
                 }
+                ast::LiteralValue::Char(v) => {
+                    let maybe_reg = self.scratch.allocate_scratch();
+                    match maybe_reg {
+                        Some(reg) => {
+                            self.emit(&format!("movq ${}, {}", v, reg.name()));
+                            Some(reg)
+                        }
+                        None => panic!("unavailable scratch space"),
+                    }
+                }
+                ast::LiteralValue::Boolean(v) => {
+                    let maybe_reg = self.scratch.allocate_scratch();
+                    match maybe_reg {
+                        Some(reg) => {
+                            self.emit(&format!("movq ${}, {}", v, reg.name()));
+                            Some(reg)
+                        }
+                        None => panic!("unavailable scratch space"),
+                    }
+                }
                 ast::LiteralValue::Str(s) => {
                     let label = self.create_label_name();
                     self.emit(&format!(".data"));
