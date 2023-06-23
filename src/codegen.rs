@@ -33,7 +33,7 @@ impl ScratchTable {
 
     /// Allocates a scratch register by finding the first unused register and
     /// returning its name.
-    fn allocate_scratch(&mut self) -> Option<ScratchSpace> {
+    fn allocate(&mut self) -> Option<ScratchSpace> {
         for reg in self.registers.iter_mut() {
             if !reg.in_use {
                 reg.in_use = true;
@@ -44,7 +44,7 @@ impl ScratchTable {
     }
 
     /// Free a scratch register.
-    fn free_scratch(&mut self, index: usize) {
+    fn free(&mut self, index: usize) {
         self.registers[index].in_use = false;
     }
 }
@@ -56,6 +56,12 @@ impl ScratchSpace {
             in_use: false,
         }
     }
+
+    /// Return the index of the scratch space.
+    fn index(&self) -> usize {
+        self.index
+    }
+
     /// Return the register name given its index.
     fn name(&self) -> &str {
         match self.index {
@@ -103,7 +109,7 @@ impl CodeGenerator {
         match expr {
             ast::Expr::Literal(value) => match value {
                 ast::LiteralValue::Int(v) => {
-                    let maybe_reg = self.scratch.allocate_scratch();
+                    let maybe_reg = self.scratch.allocate();
                     match maybe_reg {
                         Some(reg) => {
                             self.emit(&format!("movq ${}, {}", v, reg.name()));
@@ -113,7 +119,7 @@ impl CodeGenerator {
                     }
                 }
                 ast::LiteralValue::Char(v) => {
-                    let maybe_reg = self.scratch.allocate_scratch();
+                    let maybe_reg = self.scratch.allocate();
                     match maybe_reg {
                         Some(reg) => {
                             self.emit(&format!("movq ${}, {}", v, reg.name()));
@@ -123,7 +129,7 @@ impl CodeGenerator {
                     }
                 }
                 ast::LiteralValue::Boolean(v) => {
-                    let maybe_reg = self.scratch.allocate_scratch();
+                    let maybe_reg = self.scratch.allocate();
                     match maybe_reg {
                         Some(reg) => {
                             self.emit(&format!("movq ${}, {}", v, reg.name()));
@@ -148,6 +154,24 @@ impl CodeGenerator {
                 match op {
                     ast::BinOp::Add => {
                         self.emit(&format!("addq {}, {}", r1.name(), r0.name()));
+                    }
+                    ast::BinOp::Sub => {
+                        self.emit(&format!("subq {}, {}", r1.name(), r0.name()));
+                    }
+                    ast::BinOp::Div => {
+                        self.emit(&format!("movq $0, %%rdx"));
+                        self.emit(&format!("movq {}, %%rax", r0.name()));
+                        self.emit(&format!("cqto"));
+                        self.emit(&format!("idivq {}", r1.name()));
+                        self.scratch.free(r1.index());
+                        self.scratch.free(r0.index());
+                        match self.scratch.allocate() {
+                            Some(reg) => {
+                                self.emit(&format!("movq %%rax, {}", reg.name()));
+                                return Some(reg);
+                            },
+                            None => panic!("unavailable scratch space"),
+                        }
                     }
                     _ => todo!(),
                 }
@@ -186,14 +210,14 @@ mod tests {
     #[test]
     fn can_allocate_scratch_and_create_labels() {
         let mut scratch = ScratchTable::new();
-        let r1 = scratch.allocate_scratch();
+        let r1 = scratch.allocate();
         assert!(r1.is_some());
         assert_eq!(r1.unwrap().name(), "rbx");
-        let r2 = scratch.allocate_scratch();
+        let r2 = scratch.allocate();
         assert!(r2.is_some());
         assert_eq!(r2.unwrap().name(), "r10");
-        scratch.free_scratch(1);
-        let r10 = scratch.allocate_scratch();
+        scratch.free(1);
+        let r10 = scratch.allocate();
         assert!(r10.is_some());
         assert_eq!(r10.unwrap().name(), "r10");
     }
