@@ -189,6 +189,24 @@ impl CodeGenerator {
                     _ => todo!(),
                 }
                 None
+            },
+            ast::Expr::Unary(op, rhs) => {
+                let r = self.compile_expression(rhs).unwrap();
+                match op {
+                    ast::UnaryOp::Neg => {
+                        self.emit(&format!("neg {}", r.name()));
+                        Some(r)
+                    },
+                    ast::UnaryOp::Not => {
+                        let label = self.create_label();
+                        self.emit(&format!("cmp $0, {}", r.name()));
+                        self.emit(&format!("movq $1, {}", r.name()));
+                        self.emit(&format!("je {}", label));
+                        self.emit(&format!("movq $0, {}", r.name()));
+                        self.emit(&format!("{}:", label));
+                        Some(r)
+                    },
+                }
             }
             _ => todo!(),
         }
