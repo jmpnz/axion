@@ -343,19 +343,67 @@ impl CodeGenerator {
     }
 
     /// Compile a statement.
-    fn compile_statement(&mut self, stmt: &ast::Stmt)  {
+    fn compile_statement(&mut self, stmt: &ast::Stmt) {
         match stmt {
             ast::Stmt::Expr(expr) => {
                 let reg = self.compile_expression(&expr).unwrap();
                 self.scratch.free(reg.index());
-            },
-                ast::Stmt::Return(expr) => {
+            }
+            ast::Stmt::Return(expr) => {
                 let reg = self.compile_expression(&expr).unwrap();
                 self.emit(&format!("movq {}, %%rax", reg.name()));
                 self.emit(&format!("popq %%rbp"));
                 self.emit(&format!("ret"));
                 self.scratch.free(reg.index());
-            },
+            }
+            ast::Stmt::Var(name, t, initializer) => {
+                let sym = self.resolve_symbol(name);
+                match (sym.scope(), sym.t()) {
+                    (
+                        sema::SymbolKind::Global,
+                        types::DeclType::Integer
+                        | types::DeclType::Char
+                        | types::DeclType::Boolean,
+                    ) => {
+                        self.emit(&format!(".data"));
+                        self.emit(&format!(".global {}", name));
+                        match initializer {
+                            Some(expr) => match expr {
+                                ast::Expr::Literal(value) => match value {
+                                    ast::LiteralValue::Int(v) => {
+                                        self.emit(&format!(
+                                            "{}: .quad {}",
+                                            name, v
+                                        ));
+                                    }
+                                    ast::LiteralValue::Str(v) => {
+                                        self.emit(&format!(
+                                            "{}: .string {}",
+                                            name, v
+                                        ));
+                                    }
+                                    ast::LiteralValue::Char(v) => {
+                                        self.emit(&format!(
+                                            "{}: .quad {}",
+                                            name, v
+                                        ));
+                                    }
+                                    ast::LiteralValue::Boolean(v) => {
+                                        self.emit(&format!(
+                                            "{}: .quad {}",
+                                            name, v
+                                        ));
+                                    }
+                                },
+                                _ => panic!("unexpected initializer"),
+                            },
+                            None => self.emit(&format!("{}: .quad 0", name)),
+                        }
+                    }
+                    (_, _) => todo!(),
+                }
+            }
+
             _ => todo!(),
         }
     }
