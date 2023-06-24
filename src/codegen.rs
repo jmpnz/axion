@@ -343,16 +343,18 @@ impl CodeGenerator {
     }
 
     /// Compile a statement.
-    fn compile_statement(&mut self, stmt: &ast::Stmt) -> Option<ScratchSpace> {
+    fn compile_statement(&mut self, stmt: &ast::Stmt)  {
         match stmt {
-            ast::Stmt::Expr(expr) => self.compile_expression(&expr),
-            ast::Stmt::Return(expr) => {
+            ast::Stmt::Expr(expr) => {
+                let reg = self.compile_expression(&expr).unwrap();
+                self.scratch.free(reg.index());
+            },
+                ast::Stmt::Return(expr) => {
                 let reg = self.compile_expression(&expr).unwrap();
                 self.emit(&format!("movq {}, %%rax", reg.name()));
                 self.emit(&format!("popq %%rbp"));
                 self.emit(&format!("ret"));
                 self.scratch.free(reg.index());
-                None
             },
             _ => todo!(),
         }
