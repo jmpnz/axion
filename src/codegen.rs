@@ -411,11 +411,13 @@ impl CodeGenerator {
                 self.emit(&format!("pushq %%rbp"));
                 self.emit(&format!("movq %%rsp, %%rbp"));
 
+                let mut args = Vec::new();
                 for (index, _) in params.iter().enumerate() {
                     self.emit(&format!(
                         "pushq {}",
                         ScratchSpace::arg_name(index)
                     ));
+                    args.push(ScratchSpace::arg_name(index));
                 }
                 // TODO: count number of local variables to allocate them
                 // save callee-saved registers
@@ -428,6 +430,16 @@ impl CodeGenerator {
                 for stmt in stmts {
                     self.compile_statement(stmt);
                 }
+
+                for arg in args.iter().rev() {
+                    self.emit(&format!("popq {}", arg));
+                }
+
+                self.emit(&format!("popq %%r15"));
+                self.emit(&format!("popq %%r14"));
+                self.emit(&format!("popq %%r13"));
+                self.emit(&format!("popq %%r12"));
+                self.emit(&format!("popq %%rbx"));
             }
             _ => todo!(),
         }
