@@ -403,7 +403,32 @@ impl CodeGenerator {
                     (_, _) => todo!(),
                 }
             }
+            ast::Stmt::Function(name, t, params, stmts) => {
+                self.emit(&format!(".text"));
+                self.emit(&format!(".global {}", name));
+                self.emit(&format!("{}:", name));
+                // prologue
+                self.emit(&format!("pushq %%rbp"));
+                self.emit(&format!("movq %%rsp, %%rbp"));
 
+                for (index, _) in params.iter().enumerate() {
+                    self.emit(&format!(
+                        "pushq {}",
+                        ScratchSpace::arg_name(index)
+                    ));
+                }
+                // TODO: count number of local variables to allocate them
+                // save callee-saved registers
+                self.emit(&format!("pushq %%rbx"));
+                self.emit(&format!("pushq %%r12"));
+                self.emit(&format!("pushq %%r13"));
+                self.emit(&format!("pushq %%r14"));
+                self.emit(&format!("pushq %%r15"));
+
+                for stmt in stmts {
+                    self.compile_statement(stmt);
+                }
+            }
             _ => todo!(),
         }
     }
