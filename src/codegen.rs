@@ -343,7 +343,13 @@ impl CodeGenerator {
     }
 
     /// Compile a statement.
-    fn compile_statement(&self, stmt: &ast::Stmt) {}
+    fn compile_statement(&mut self, stmt: &ast::Stmt) -> Option<ScratchSpace> {
+        match stmt {
+            ast::Stmt::Expr(expr) => self.compile_expression(&expr),
+
+            _ => todo!(),
+        }
+    }
 
     /// Emit assembly instructions to the stream.
     fn emit(&mut self, inst: &str) {
