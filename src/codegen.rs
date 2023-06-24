@@ -440,6 +440,10 @@ impl CodeGenerator {
                 self.emit(&format!("popq %%r13"));
                 self.emit(&format!("popq %%r12"));
                 self.emit(&format!("popq %%rbx"));
+
+                self.emit(&format!("movq %%rbp, %%rsp"));
+                self.emit(&format!("popq %%rbp"));
+                self.emit(&format!("ret"));
             }
             _ => todo!(),
         }
