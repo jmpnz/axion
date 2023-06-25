@@ -122,7 +122,11 @@ impl CodeGenerator {
 
     /// Core code generation routine, uses the symbol table and AST to compile
     /// the program AST to assembly.
-    pub fn codegen(&self, symtab: &sema::SymbolTable, ast: &[ast::Stmt]) {}
+    pub fn codegen(&mut self, symtab: &sema::SymbolTable, ast: &[ast::Stmt]) {
+        for stmt in ast {
+            self.compile_statement(stmt);
+        }
+    }
 
     /// Compile an expression.
     fn compile_expression(&mut self, expr: &ast::Expr) -> Option<ScratchSpace> {
@@ -395,7 +399,9 @@ impl CodeGenerator {
                                         ));
                                     }
                                 },
-                                _ => panic!("unexpected initializer"),
+                                _ => {
+                                    self.compile_expression(expr);
+                                }
                             },
                             None => self.emit(&format!("{}: .quad 0", name)),
                         }
@@ -541,11 +547,10 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn can_codegen_basic_block() {
         let source = r#"
             let a : int = 5;
-            let b : int = c;
+            let b : int = 2;
             let c : int = a + b;
         "#;
         let mut lexer = Lexer::new(source);
@@ -555,5 +560,7 @@ mod tests {
         let mut sema = SemanticAnalyzer::new();
         sema.run(&ast);
         let mut codegen = CodeGenerator::new(sema.symtable());
+        codegen.codegen(&sema.symtable(), &ast);
+        println!("{}", codegen.stream);
     }
 }
