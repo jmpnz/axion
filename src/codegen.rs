@@ -433,7 +433,7 @@ impl CodeGenerator {
                         _ => continue,
                     }
                 }
-                self.emit(&format!("subq ${}, %%rsp", num_args));
+                self.emit(&format!("subq ${}, %%rsp", num_args * 8));
                 // save callee-saved registers
                 self.emit(&format!("pushq %%rbx"));
                 self.emit(&format!("pushq %%r12"));
@@ -552,6 +552,9 @@ mod tests {
             let a : int = 5;
             let b : int = 2;
             let c : int = a + b;
+            function test() -> int {
+                let a : int = 3;
+            }
         "#;
         let mut lexer = Lexer::new(source);
         let tokens = lexer.lex().unwrap();
