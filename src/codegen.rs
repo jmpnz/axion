@@ -419,7 +419,15 @@ impl CodeGenerator {
                     ));
                     args.push(ScratchSpace::arg_name(index));
                 }
-                // TODO: count number of local variables to allocate them
+                // allocate space on the stack of local variables.
+                let mut num_args = 0;
+                for stmt in stmts {
+                    match stmt {
+                        ast::Stmt::Var(..) => num_args += 1,
+                        _ => continue,
+                    }
+                }
+                self.emit(&format!("subq ${}, %%rsp", num_args));
                 // save callee-saved registers
                 self.emit(&format!("pushq %%rbx"));
                 self.emit(&format!("pushq %%r12"));
@@ -428,7 +436,7 @@ impl CodeGenerator {
                 self.emit(&format!("pushq %%r15"));
 
                 for stmt in stmts {
-                    self.compile_statement(stmt);
+                    self.compile_statement(&stmt);
                 }
 
                 for arg in args.iter().rev() {
