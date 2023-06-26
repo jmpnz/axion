@@ -360,6 +360,26 @@ impl CodeGenerator {
                 self.emit(&format!("ret"));
                 self.scratch.free(reg.index());
             }
+            ast::Stmt::If(expr, true_branch, else_branch) => {
+                let condition = self.compile_expression(&expr).unwrap();
+                let epilogue_label = self.create_label();
+                let else_label = self.create_label();
+                let tmp = self.scratch.allocate().unwrap();
+                self.emit(&format!("movq $0, {}", tmp.name()));
+                self.emit(&format!("cmp {}, {}",condition.name(), tmp.name()));
+                self.scratch.free(condition.index());
+                self.scratch.free(tmp.index());
+                if else_branch.is_some() {
+                    self.emit(&format!("je {}", else_label));
+                }
+                self.compile_statement(true_branch);
+                self.emit(&format!("jmp {}", epilogue_label));
+                if else_branch.is_some() {
+                    self.emit(&format!("{}:", else_label));
+                    self.compile_statement(&else_branch.clone().unwrap());
+                }
+                self.emit(&format!("{}:", epilogue_label));
+            }
             ast::Stmt::Var(name, t, initializer) => {
                 let sym = self.resolve_symbol(name);
                 match (sym.scope(), sym.t()) {
