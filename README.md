@@ -1,34 +1,35 @@
 # axion : a small, statically typed, compiled language
 
 axion is a toy language hacked together for the sole purpose of learning
-how compilers fit together.
+how compilers fit together. This isn't something I will work on in the
+future but is here mostly as a reference to myself and others.
 
-The current `axion` compiler is written in Rust and includes a front end with
-a lexer, hand written recursive descent parser with `panic!` error reporting and
-a type checker that does most of the semantic analysis.
+The `axion` compiler is written in Rust and includes a front end with with
+a lexer and hand written recursive descent parser and a backend that includes
+a type checker and code generator.
 
-`axion` compiles code to x86 assembly  so it needs `gcc` or `clang` to bundle
-the assembly to object file and link them to executable binaries.
+I haven't tested much of the generated code and there is no standard library
+or runtime to do things like print stuff to stdout but the assembly can be
+run through a debugger such as `gdb` or `blink`.
+
+`axion` compiles code to a subset of x86-64 assembly and will need either
+`gcc` or `clang` to actually get an executable file from the assembly.
+
+If you ever feel like hacking on this here are some interesting things I wanted
+to try but didn't end up doing :
+
+- Write a pass to transform the AST into an IR (MIR/LLVM/BRIL...)
+- Write a set of optimizations as nano passes.
+- Write an emulator for the subset of x86 so you can test the output of codegen.
+- Add support for arrays.
 
 ## Examples
 
-Here are some code examples for what axion looks like.
+I wouldn't say the language is designed at all, as it is pretty much a subset
+of JavaScript with a couple primitive types, also I've left the arrays as a
+future TODO if I ever get interested in finishing this.
 
-```javascript
-
-const answer : int = 42;
-
-function sumArray(arr: array[int], size: int) -> int {
-    let sum: int = 0;
-    let i:int = 0;
-    for (i = 0;i < size;i++) {
-        sum = sum + arr[i];
-    }
-    return sum;
-}
-
-```
-
+Here is a code example that sums up most of the language.
 
 ```javascript
 
